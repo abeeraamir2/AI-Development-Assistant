@@ -1,0 +1,41 @@
+.side-bar {
+    width: 220px;
+    background-color: #1b2a4b;
+    padding: 24px 16px;
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.side-bar-logo {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.side-bar nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-item {
+    padding: 12px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.nav-item-active {
+    background-color: #2a3d68;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 14px;
+}

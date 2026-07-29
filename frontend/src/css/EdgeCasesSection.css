@@ -1,0 +1,29 @@
+.section {
+    background-color: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 16px;
+}
+
+.heading {
+    font-size: 14px;
+    font-weight: 700;
+    color: #9a3412;
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.listItem {
+    font-size: 14px;
+    color: #7c2d12;
+    padding: 4px 0;
+}

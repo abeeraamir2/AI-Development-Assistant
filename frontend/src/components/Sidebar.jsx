@@ -1,3 +1,4 @@
+import "../css/Sidebar.css";
 function Sidebar({navItems}){
     return(
         <aside className="side-bar">

@@ -3,6 +3,7 @@ import Header from "./components/Header"
 import RecentList from "./components/RecentList"
 import UploadFileBox from "./components/UploadFileBox"
 import ResultsPanel from "./components/ResultsPanel"
+import "./App.css"
 
 function App(){
   const navItems = [
@@ -30,9 +31,9 @@ function App(){
     ]
   }
   return(
-    <div>
+    <div className="appLayout">
       <Sidebar navItems={navItems}/>
-      <main>
+      <main className="mainContent">
         <Header 
             title = "Analyze a Requirement"
             subtitle = "Upload a user story as PDF,Word or plain text"

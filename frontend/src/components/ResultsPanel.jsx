@@ -2,6 +2,7 @@ import Header from "./Header"
 import SummarySection from "./SummarySection"
 import CriteriaSection from "./CriteriaSection"
 import EdgeCasesSection from "./EdgeCasesSection"
+import "../css/ResultsPanel.css";
 
 function ResultsPanel({result}){
     return(

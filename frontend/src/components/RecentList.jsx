@@ -1,17 +1,18 @@
-function RecentList({recentFiles}){
-    return(
-        <div>
-            <h2>Recently Uploaded</h2>
-            <ul>
-                {recentFiles.map((file => (
-                    <li key = {file.id}>
+import "../css/RecentList.css";
+
+function RecentList({ recentFiles }) {
+    return (
+        <div className="recentCard">
+            <h3 className="recentTitle">Recently Uploaded</h3>
+            <ul className="fileList">
+                {recentFiles.map((file) => (
+                    <li key={file.id} className="fileRow">
                         {file.label}
-                        <span>{file.status}</span>
+                        <span className="badge">{file.status}</span>
                     </li>
-                )))}
-                <li></li>
+                ))}
             </ul>
         </div>
-    )
+    );
 }
-export default RecentList
+export default RecentList;
