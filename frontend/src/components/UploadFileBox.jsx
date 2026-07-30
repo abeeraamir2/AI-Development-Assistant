@@ -1,6 +1,6 @@
 import "../css/UploadFileBox.css";
 
-function UploadFileBox({selectedFile,setSelectedFile}) {
+function UploadFileBox({selectedFile,setSelectedFile,onAnalyze}) {
     {/* const [selectedFile, setSelectedFile] = useState([]); // for multiple files */}
 
     function handleFileChange(event) {
@@ -47,7 +47,7 @@ function UploadFileBox({selectedFile,setSelectedFile}) {
             }
             */}
 
-            <button>Analyze with AI</button>
+            <button onClick = {onAnalyze}>Analyze with AI</button>
         </div>
     );
 }

@@ -4,6 +4,7 @@ import Header from "./components/Header"
 import RecentList from "./components/RecentList"
 import UploadFileBox from "./components/UploadFileBox"
 import ResultsPanel from "./components/ResultsPanel"
+import mockAnalysis from "./data/mockAnalysis.json"
 import "./App.css"
 
 function App(){
@@ -20,21 +21,11 @@ function App(){
 
   const [selectedFile, setSelectedFile] = useState("");
 
-    const [analysisResult, setAnalysisResult] = useState({
-    summary: "User wants to login with email and password",
-    criteria: [
-      "User can enter email and password",
-      "System validates email format",
-      "System shows error on incorrect credentials",
-      "User is redirected to dashboard on success"
-    ],
-    edgeCases: [
-      "Build login form UI",
-      "Create /login API endpoint",
-      "Add JWT token generation",
-      "Add error handling for invalid credentials"
-    ]
-  });
+  const [analysisResult, setAnalysisResult] = useState("");
+
+  function handleAnalysisClick(){
+    setAnalysisResult(mockAnalysis)
+  }
   return(
     <div className="appLayout">
       <Sidebar navItems={navItems}/>
@@ -43,9 +34,13 @@ function App(){
             title = "Analyze a Requirement"
             subtitle = "Upload a user story as PDF,Word or plain text"
         />
-        <UploadFileBox selectedFile={selectedFile} setSelectedFile={setSelectedFile}/>
+        <UploadFileBox 
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          onAnalyze = {handleAnalysisClick}
+          />
         <RecentList recentFiles={recentFiles}/>
-        <ResultsPanel result = {analysisResult}/>
+        { analysisResult && <ResultsPanel result = {analysisResult}/>}
       </main>
     </div>
   )

@@ -1,0 +1,14 @@
+{
+    "summary": "User wants to log in with email and password, stay signed in, and reset a forgotten password via email link. System must lock the account after repeated failed attempts.",
+    "criteria": [
+        "User can enter email and password",
+        "System validates email format",
+        "System shows error on incorrect credentials",
+        "User is redirected to dashboard on success",
+        "Account locks after 5 failed attempts"
+    ],
+    "edgeCases": [
+        "Password complexity rules not specified",
+        "Behaviour on expired reset link undefined"
+    ]
+}
