@@ -20,11 +20,30 @@ function App(){
   ]
 
   const [selectedFile, setSelectedFile] = useState("");
-
   const [analysisResult, setAnalysisResult] = useState("");
+  const [isLoading,setIsLoading] = useState(false);
+  const [error,setError] = useState(null);
 
   function handleAnalysisClick(){
-    setAnalysisResult(mockAnalysis)
+    if (!selectedFile){
+      setError("Please select a file before analyzing")
+      return;
+    }
+    setIsLoading(true)
+    setError(null)
+    setAnalysisResult(null);
+
+    setTimeout(()=> {
+      const didFail = Math.random() < 0.2;
+      if(didFail){
+        setError("Analysis failed.Please try again");
+        setIsLoading(false);
+      }
+      else{
+        setAnalysisResult(mockAnalysis);
+        setIsLoading(false);
+      }
+    },1500)
   }
   return(
     <div className="appLayout">
@@ -38,7 +57,9 @@ function App(){
           selectedFile={selectedFile}
           setSelectedFile={setSelectedFile}
           onAnalyze = {handleAnalysisClick}
-          />
+          isLoading = {isLoading}
+        />
+        { error && <p className="errorMessage">{error}</p>}
         <RecentList recentFiles={recentFiles}/>
         { analysisResult && <ResultsPanel result = {analysisResult}/>}
       </main>

@@ -1,6 +1,6 @@
 import "../css/UploadFileBox.css";
 
-function UploadFileBox({selectedFile,setSelectedFile,onAnalyze}) {
+function UploadFileBox({selectedFile,setSelectedFile,onAnalyze,isLoading}) {
     {/* const [selectedFile, setSelectedFile] = useState([]); // for multiple files */}
 
     function handleFileChange(event) {
@@ -29,7 +29,8 @@ function UploadFileBox({selectedFile,setSelectedFile,onAnalyze}) {
                 type="file"
                 accept=".pdf,.docx,.txt"
                 onChange={handleFileChange}
-                // multiple   
+                // multiple
+                disabled={isLoading}   
             />
 
             {/* for single file */}
@@ -47,7 +48,8 @@ function UploadFileBox({selectedFile,setSelectedFile,onAnalyze}) {
             }
             */}
 
-            <button onClick = {onAnalyze}>Analyze with AI</button>
+            <button onClick = {onAnalyze} disabled={isLoading}>
+                {isLoading ? "Analyzing...." : "Analyze with AI"}</button>
         </div>
     );
 }
