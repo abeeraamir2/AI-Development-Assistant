@@ -1,9 +1,6 @@
-import { useState } from "react";
 import "../css/UploadFileBox.css";
 
-function UploadFileBox() {
-    const [selectedFile, setSelectedFile] = useState(""); // for single file
-
+function UploadFileBox({selectedFile,setSelectedFile}) {
     {/* const [selectedFile, setSelectedFile] = useState([]); // for multiple files */}
 
     function handleFileChange(event) {
