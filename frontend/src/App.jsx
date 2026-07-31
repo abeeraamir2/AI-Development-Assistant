@@ -58,7 +58,7 @@ function App(){
         <Routes>
           <Route 
             path="/"
-            element={<UploadFileBox 
+            element={<UploadPage
                       selectedFile={selectedFile}
                       setSelectedFile={setSelectedFile}
                       onAnalyze = {handleAnalysisClick}
