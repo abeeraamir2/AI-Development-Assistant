@@ -7,8 +7,20 @@
         "User is redirected to dashboard on success",
         "Account locks after 5 failed attempts"
     ],
+    "apis": [
+        "POST /api/login",
+        "POST /api/forgot-password",
+        "POST /api/reset-password"
+    ],
+    "tasks": [
+        "Build login form UI",
+        "Create /login API endpoint",
+        "Add JWT token generation",
+        "Add error handling for invalid credentials"
+    ],
     "edgeCases": [
         "Password complexity rules not specified",
         "Behaviour on expired reset link undefined"
-    ]
+    ],
+    "dbTables": ["users", "login_attempts", "password_resets"]
 }

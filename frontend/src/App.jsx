@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Routes,Route, useNavigate } from "react-router-dom"
+import ResultsPage from "./pages/ResultsPage"
+import UploadPage from "./pages/UploadPage"
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header"
 import RecentList from "./components/RecentList"
@@ -20,9 +23,11 @@ function App(){
   ]
 
   const [selectedFile, setSelectedFile] = useState("");
-  const [analysisResult, setAnalysisResult] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [isLoading,setIsLoading] = useState(false);
   const [error,setError] = useState(null);
+
+  const navigate = useNavigate();
 
   function handleAnalysisClick(){
     if (!selectedFile){
@@ -42,6 +47,7 @@ function App(){
       else{
         setAnalysisResult(mockAnalysis);
         setIsLoading(false);
+        navigate("/results")
       }
     },1500)
   }
@@ -49,19 +55,23 @@ function App(){
     <div className="appLayout">
       <Sidebar navItems={navItems}/>
       <main className="mainContent">
-        <Header 
-            title = "Analyze a Requirement"
-            subtitle = "Upload a user story as PDF,Word or plain text"
-        />
-        <UploadFileBox 
-          selectedFile={selectedFile}
-          setSelectedFile={setSelectedFile}
-          onAnalyze = {handleAnalysisClick}
-          isLoading = {isLoading}
-        />
-        { error && <p className="errorMessage">{error}</p>}
-        <RecentList recentFiles={recentFiles}/>
-        { analysisResult && <ResultsPanel result = {analysisResult}/>}
+        <Routes>
+          <Route 
+            path="/"
+            element={<UploadFileBox 
+                      selectedFile={selectedFile}
+                      setSelectedFile={setSelectedFile}
+                      onAnalyze = {handleAnalysisClick}
+                      isLoading = {isLoading}
+                      error = {error}
+                      recentFiles = {recentFiles}
+                    />}
+          />
+          <Route
+            path = "/results"
+            element={<ResultsPanel result = {analysisResult}/>}
+          />
+        </Routes>
       </main>
     </div>
   )
