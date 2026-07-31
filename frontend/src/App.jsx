@@ -22,7 +22,7 @@ function App(){
     {id:2,label:"Checkout_Flow.pdf",status:"analyzed"}
   ]
 
-  const [selectedFile, setSelectedFile] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isLoading,setIsLoading] = useState(false);
   const [error,setError] = useState(null);
@@ -32,6 +32,7 @@ function App(){
   function handleAnalysisClick(){
     if (!selectedFile){
       setError("Please select a file before analyzing")
+      setSelectedFile(null)
       return;
     }
     setIsLoading(true)
@@ -69,7 +70,9 @@ function App(){
           />
           <Route
             path = "/results"
-            element={<ResultsPanel result = {analysisResult}/>}
+            element={<ResultsPage 
+                      result = {analysisResult} 
+                      setSelectedFile = {setSelectedFile}/>}
           />
         </Routes>
       </main>
