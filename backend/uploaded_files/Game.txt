@@ -1,0 +1,401 @@
+                                      org 100h
+
+jmp start           
+
+; ------------------------------------------------
+; GAME VARIABLES (Data Section)
+; ------------------------------------------------
+; Paddle Variables
+paddle_x    dw 140  
+paddle_y    dw 180  
+pad_width   dw 35      
+pad_height  dw 4       
+pad_color   db 9       
+
+; Ball Variables
+ball_x      dw 160  
+ball_y      dw 100  
+ball_size   dw 3    
+ball_dx     dw 2       
+ball_dy     dw -2   
+ball_color  db 15   
+
+; Smash Wall Parameters
+WALL_TOP    dw 20   
+WALL_BOTTOM dw 30   
+HOLE_WIDTH  dw 24   
+HOLE_HEIGHT dw 8    
+
+; UI Strings & Tracking Registers
+score       dw 0        
+score_str   db 'SCORE: 0000$' 
+lives       db 3                
+lives_str   db 'LIVES: 3$'       
+game_over_msg db '  G A M E   O V E R  $'
+restart_msg   db 'Press ESC to Exit Game$'
+
+; ------------------------------------------------
+; MAIN PROGRAM START
+; ------------------------------------------------
+start:
+    cld             
+
+    mov ax, 0013h   ; Set Graphics Mode 13h
+    int 10h
+
+    mov ax, 0A000h  ; Point ES to VGA memory
+    mov es, ax
+
+; ------------------------------------------------
+; INITIALIZE GIANT WALL
+; ------------------------------------------------
+    mov ax, [WALL_TOP]
+    mov cx, 320
+    mul cx
+    add ax, 30      
+    mov di, ax      
+
+    mov dx, 10      
+    mov al, 4       
+    mov si, 320
+    sub si, 260     
+draw_wall_row:
+    mov cx, 260     
+    rep stosb       
+    add di, si      
+    dec dx
+    jnz draw_wall_row
+
+; ------------------------------------------------
+; MAIN GAME LOOP
+; ------------------------------------------------
+game_loop:
+    mov ah, 86h
+    mov cx, 0       
+    mov dx, 8000    
+    int 15h
+
+    call erase_ball
+    call update_ball    
+    
+    call draw_paddle    
+    call draw_ball      
+    call display_score  
+
+    mov ah, 01h         
+    int 16h
+    jz game_loop        
+
+    mov ah, 00h         
+    int 16h             
+
+    cmp ah, 4Bh         ; Left Arrow
+    je move_left
+    cmp ah, 4Dh         ; Right Arrow
+    je move_right
+    cmp ah, 01h         ; ESC key
+    je exit_game
+    jmp game_loop       
+
+; ------------------------------------------------
+; MOVEMENT LOGIC (Paddle)
+; ------------------------------------------------
+move_left:
+    cmp [paddle_x], 10  
+    jl game_loop        
+    call erase_paddle   
+    sub [paddle_x], 10  
+    jmp game_loop       
+
+move_right:
+    mov ax, [paddle_x]
+    add ax, [pad_width]
+    add ax, 10          
+    cmp ax, 310         
+    jg game_loop        
+    call erase_paddle   
+    add [paddle_x], 10  
+    jmp game_loop       
+
+exit_game:
+    mov ax, 0003h       ; Restore text mode safely
+    int 10h
+    mov ah, 4Ch         
+    int 21h
+
+; ------------------------------------------------
+; BALL LOGIC & COLLISION CHECKS
+; ------------------------------------------------
+update_ball:
+    mov ax, [ball_dx]
+    add [ball_x], ax
+    mov ax, [ball_dy]
+    add [ball_y], ax
+
+    cmp [ball_x], 5
+    jle force_bounce_left
+
+    mov ax, 315
+    sub ax, [ball_size]
+    cmp [ball_x], ax
+    jge force_bounce_right
+
+    cmp [ball_y], 12
+    jle force_bounce_top
+
+check_wall_collision:
+    mov ax, [ball_y]
+    cmp ax, [WALL_BOTTOM]
+    jg check_paddle_collision 
+    cmp ax, [WALL_TOP]
+    jl check_paddle_collision 
+
+    mov ax, [ball_y]
+    mov cx, 320
+    mul cx
+    add ax, [ball_x]
+    mov si, ax
+    mov al, es:[si]
+    cmp al, 0
+    je check_paddle_collision
+
+    call smash_hole_in_wall
+    add [score], 10     
+    call update_score_string
+    
+    neg [ball_dy]
+    mov ax, [WALL_BOTTOM] 
+    add ax, 1
+    mov [ball_y], ax
+    ret              
+
+check_paddle_collision:
+    mov ax, [paddle_y]
+    sub ax, [ball_size]
+    cmp [ball_y], ax
+    jne check_bottom_wall 
+
+    mov ax, [ball_x]
+    add ax, [ball_size]
+    cmp ax, [paddle_x]
+    jl check_bottom_wall 
+
+    mov ax, [paddle_x]
+    add ax, [pad_width]
+    cmp [ball_x], ax
+    jl check_bottom_wall 
+
+    neg [ball_dy]
+    mov ax, [paddle_y]
+    sub ax, [ball_size]
+    sub ax, 1
+    mov [ball_y], ax
+    ret
+
+check_bottom_wall:
+    mov ax, 195
+    sub ax, [ball_size]
+    cmp [ball_y], ax
+    jge reset_ball      
+    ret
+
+force_bounce_left:
+    mov [ball_x], 6
+    neg [ball_dx]
+    ret
+
+force_bounce_right:
+    mov ax, 314
+    sub ax, [ball_size]
+    mov [ball_x], ax
+    neg [ball_dx]
+    ret
+
+force_bounce_top:
+    mov [ball_y], 13
+    neg [ball_dy]
+    ret
+
+; ------------------------------------------------
+; LIVES & CYCLE REDUCTION HANDLING
+; ------------------------------------------------
+reset_ball:
+    call erase_ball
+    
+    dec [lives]
+    mov al, [lives]
+    add al, '0'
+    mov [lives_str + 7], al  
+    
+    cmp [lives], 0
+    je trigger_game_over     
+
+    mov [ball_x], 160   
+    mov [ball_y], 100   
+    mov [ball_dy], -2   
+    ret
+
+trigger_game_over:
+    mov ax, 0A000h
+    mov es, ax
+    xor di, di
+    mov cx, 64000            
+    mov al, 0                
+    rep stosb
+
+    ; Print GAME OVER
+    mov ah, 02h
+    mov bh, 0
+    mov dh, 10               
+    mov dl, 10               
+    int 10h
+
+    mov ah, 09h
+    lea dx, game_over_msg
+    int 21h
+
+    ; Print Esc Exit Notification
+    mov ah, 02h
+    mov bh, 0
+    mov dh, 13               
+    mov dl, 9                
+    int 10h
+
+    mov ah, 09h
+    lea dx, restart_msg
+    int 21h
+
+game_over_halt_loop:
+    mov ah, 00h
+    int 16h
+    cmp ah, 01h              
+    jne game_over_halt_loop  
+    jmp exit_game            
+
+; ------------------------------------------------
+; SUBROUTINES
+; ------------------------------------------------
+
+smash_hole_in_wall:
+    pusha                       
+    mov ax, [ball_y]
+    sub ax, 2                   
+    mov cx, 320
+    mul cx
+    mov bx, [ball_x]
+    sub bx, 10                  
+    add ax, bx
+    mov di, ax                  
+    mov dx, [HOLE_HEIGHT]       
+    mov al, 0                   
+    mov si, 320
+    sub si, [HOLE_WIDTH]        
+carve_row:
+    mov cx, [HOLE_WIDTH]
+    rep stosb                   
+    add di, si                  
+    dec dx
+    jnz carve_row
+    popa                        
+    ret
+
+update_score_string:
+    pusha
+    mov ax, [score]     
+    mov cx, 10          
+    xor dx, dx
+    div cx              
+    add dl, '0'         
+    mov [score_str + 10], dl 
+    xor dx, dx
+    div cx              
+    add dl, '0'
+    mov [score_str + 9], dl  
+    xor dx, dx
+    div cx              
+    add dl, '0'
+    mov [score_str + 8], dl  
+    xor dx, dx
+    div cx              
+    add al, '0'
+    mov [score_str + 7], al  
+    popa
+    ret
+
+display_score:
+    pusha
+    mov ah, 02h         
+    mov bh, 0           
+    mov dh, 0           
+    mov dl, 1           
+    int 10h             
+
+    mov ah, 09h         
+    lea dx, score_str   
+    int 21h             
+
+    mov ah, 02h         
+    mov bh, 0           
+    mov dh, 0           
+    mov dl, 28          
+    int 10h             
+
+    mov ah, 09h         
+    lea dx, lives_str   
+    int 21h             
+    popa
+    ret
+
+draw_paddle:
+    mov bl, [pad_color] 
+    jmp render_paddle   
+
+erase_paddle:
+    mov bl, 0           
+
+render_paddle:
+    pusha
+    mov ax, [paddle_y]
+    mov cx, 320
+    mul cx              
+    add ax, [paddle_x]  
+    mov di, ax          
+    mov dx, [pad_height]
+    mov al, bl          
+    mov si, 320
+    sub si, [pad_width] 
+rp_row:
+    mov cx, [pad_width] 
+    rep stosb           
+    add di, si          
+    dec dx              
+    jnz rp_row          
+    popa
+    ret                 
+
+draw_ball:
+    mov bl, [ball_color]
+    jmp render_ball
+
+erase_ball:
+    mov bl, 0
+
+render_ball:
+    pusha
+    mov ax, [ball_y]
+    mov cx, 320
+    mul cx              
+    add ax, [ball_x]    
+    mov di, ax          
+    mov dx, [ball_size] 
+    mov al, bl          
+    mov si, 320
+    sub si, [ball_size] 
+rb_row:
+    mov cx, [ball_size] 
+    rep stosb           
+    add di, si          
+    dec dx              
+    jnz rb_row          
+    popa
+    ret
