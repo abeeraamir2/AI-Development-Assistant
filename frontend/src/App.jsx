@@ -29,7 +29,7 @@ function App(){
 
   const navigate = useNavigate();
 
-  function handleAnalysisClick(){
+  async function handleAnalysisClick(){
     if (!selectedFile){
       setError("Please select a file before analyzing")
       setSelectedFile(null)
@@ -39,18 +39,28 @@ function App(){
     setError(null)
     setAnalysisResult(null);
 
-    setTimeout(()=> {
-      const didFail = Math.random() < 0.2;
-      if(didFail){
-        setError("Analysis failed.Please try again");
-        setIsLoading(false);
+    try{
+      const formData = new FormData()
+      formData.append("file",selectedFile)
+      
+      const response = await fetch("http://localhost:8000/upload",{
+        method:"POST",
+        body:formData
+      })
+
+      if(!response.ok){
+        throw new Error("Server responded with an error");
       }
-      else{
-        setAnalysisResult(mockAnalysis);
-        setIsLoading(false);
-        navigate("/results")
-      }
-    },1500)
+      const data = await response.json()    
+      setAnalysisResult(data)
+      navigate("/results")
+    }catch(error){
+      console.log(error)
+      setError("Analysis failed.Please try again")
+    }finally{
+      setIsLoading(false)
+    }
+    
   }
   return(
     <div className="appLayout">
