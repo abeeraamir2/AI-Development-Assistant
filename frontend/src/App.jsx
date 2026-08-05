@@ -49,14 +49,16 @@ function App(){
       })
 
       if(!response.ok){
+        const errorData = await response.json();
+        console.log(errorData);
         throw new Error("Server responded with an error");
       }
       const data = await response.json()    
       setAnalysisResult(data)
       navigate("/results")
     }catch(error){
-      console.log(error)
-      setError("Analysis failed.Please try again")
+      setError(error.message);
+      
     }finally{
       setIsLoading(false)
     }
