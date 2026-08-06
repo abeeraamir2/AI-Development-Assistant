@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Routes,Route, useNavigate } from "react-router-dom"
 import ResultsPage from "./pages/ResultsPage"
 import UploadPage from "./pages/UploadPage"
@@ -17,18 +17,34 @@ function App(){
     {id: 3, label:"Settings", active:false}
   ]
 
-  const recentFiles = [
-    {id:1,label:"Login_UserStory.docx",status:"analyzed"},
-    {id:2,label:"Checkout_Flow.pdf",status:"analyzed"}
-  ]
-
   const [selectedFile, setSelectedFile] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isLoading,setIsLoading] = useState(false);
   const [error,setError] = useState(null);
+  const [recentFiles, setRecentFiles] = useState([]);
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+      fetchHistory();
+  }, []);
+
+  async function fetchHistory() {
+      try {
+          const response = await fetch("http://localhost:8000/history");
+
+          if (!response.ok) {
+              throw new Error("Failed to fetch history");
+          }
+
+          const data = await response.json();
+
+          setRecentFiles(data);
+
+      } catch (error) {
+          console.log(error);
+      }
+  }
   async function handleAnalysisClick(){
     if (!selectedFile){
       setError("Please select a file before analyzing")
@@ -55,6 +71,7 @@ function App(){
       }
       const data = await response.json()    
       setAnalysisResult(data)
+      await fetchHistory();
       navigate("/results")
     }catch(error){
       setError(error.message);

@@ -3,7 +3,8 @@ from io import BytesIO
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pypdf import PdfReader
 from docx import Document
-
+from database.database import save_analysis, get_recent_analyses
+from services.gemini_service import analyze_requirement
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = (".pdf",".docx",".txt")
@@ -62,11 +63,12 @@ async def upload_file(file: UploadFile = File(...)):
             detail="No readable text found in this file (it may be a scanned/image-only document)."
         )
 
-    return {
-        "summary": extracted_text[:300],
-        "criteria": ["Real AI analysis not yet connected — showing raw extracted text"],
-        "apis": [],
-        "tasks": [],
-        "edgeCases": [],
-        "dbTables": []
-    }
+    analysis_result = analyze_requirement(extracted_text)
+    print(type(analysis_result))
+    print(analysis_result)
+    await save_analysis(file.filename, extracted_text, analysis_result)
+    return analysis_result
+
+@router.get("/history")
+async def get_history():
+    return await get_recent_analyses()
