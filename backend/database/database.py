@@ -8,6 +8,7 @@ load_dotenv()
 mongo_client = AsyncIOMotorClient(os.getenv("MONGODB_URI"))
 db = mongo_client["requirement_analyzer"]
 analysis_collection = db["analysis"]
+users_collection = db["users"]
 
 async def save_analysis(filename, extracted_text, analysis_result):
     document = {

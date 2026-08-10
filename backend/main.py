@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routes.upload import router as upload_router
+from routes.auth_routes import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -20,3 +21,4 @@ def hello():
     return {"message":"Hello from FastApi"}
 
 app.include_router(upload_router)
+app.include_router(auth_router)

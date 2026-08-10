@@ -1,10 +1,11 @@
 import os
 from io import BytesIO
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException,Depends
 from pypdf import PdfReader
 from docx import Document
 from database.database import save_analysis, get_recent_analyses
 from services.gemini_service import analyze_requirement
+from services.auth_service import require_role
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = (".pdf",".docx",".txt")
@@ -25,7 +26,7 @@ def extract_text_from_docx(file_bytes):
     return text
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...),current_user: dict = Depends(require_role(["Developer", "Admin"]))):
 
     if not file.filename.endswith(ALLOWED_EXTENSIONS):
         raise HTTPException(
