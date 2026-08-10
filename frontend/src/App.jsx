@@ -1,5 +1,5 @@
 import { useState,useEffect } from "react";
-import { Routes,Route, useNavigate } from "react-router-dom"
+import { Routes,Route,useNavigate,Navigate } from "react-router-dom"
 import ResultsPage from "./pages/ResultsPage"
 import UploadPage from "./pages/UploadPage"
 import Sidebar from "./components/Sidebar";
@@ -8,6 +8,8 @@ import RecentList from "./components/RecentList"
 import UploadFileBox from "./components/UploadFileBox"
 import ResultsPanel from "./components/ResultsPanel"
 import mockAnalysis from "./data/mockAnalysis.json"
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 import "./App.css"
 
 function App(){
@@ -22,12 +24,16 @@ function App(){
   const [isLoading,setIsLoading] = useState(false);
   const [error,setError] = useState(null);
   const [recentFiles, setRecentFiles] = useState([]);
+  const [authToken,setAuthToken] = useState(null);
+  const [userRole,setUserRole] = useState(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (authToken) {
       fetchHistory();
-  }, []);
+    }
+  }, [authToken]);
 
   async function fetchHistory() {
       try {
@@ -61,6 +67,7 @@ function App(){
       
       const response = await fetch("http://localhost:8000/upload",{
         method:"POST",
+        headers: { "Authorization": `Bearer ${authToken}` },
         body:formData
       })
 
@@ -86,16 +93,23 @@ function App(){
       <Sidebar navItems={navItems}/>
       <main className="mainContent">
         <Routes>
-          <Route 
+          
+          <Route
             path="/"
-            element={<UploadPage
-                      selectedFile={selectedFile}
-                      setSelectedFile={setSelectedFile}
-                      onAnalyze = {handleAnalysisClick}
-                      isLoading = {isLoading}
-                      error = {error}
-                      recentFiles = {recentFiles}
-                    />}
+            element={
+                authToken ? (
+                    <UploadPage
+                        selectedFile={selectedFile}
+                        setSelectedFile={setSelectedFile}
+                        onAnalyze={handleAnalysisClick}
+                        isLoading={isLoading}
+                        error={error}
+                        recentFiles={recentFiles}
+                    />
+                ) : (
+                    <Navigate to="/login" />
+                )
+            }
           />
           <Route
             path = "/results"
@@ -103,6 +117,11 @@ function App(){
                       result = {analysisResult} 
                       setSelectedFile = {setSelectedFile}/>}
           />
+          <Route 
+            path="/login" 
+            element={<LoginPage 
+                      setAuthToken={setAuthToken}
+                      setUserRole={setUserRole} />} />
         </Routes>
       </main>
     </div>
