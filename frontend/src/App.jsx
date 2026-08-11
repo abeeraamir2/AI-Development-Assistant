@@ -9,7 +9,7 @@ import UploadFileBox from "./components/UploadFileBox"
 import ResultsPanel from "./components/ResultsPanel"
 import mockAnalysis from "./data/mockAnalysis.json"
 import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+import RegisterPage from "./pages/RegisterPage";
 import "./App.css"
 
 function App(){
@@ -26,8 +26,17 @@ function App(){
   const [recentFiles, setRecentFiles] = useState([]);
   const [authToken,setAuthToken] = useState(null);
   const [userRole,setUserRole] = useState(null);
+  const [theme, setTheme] = useState("light");
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+      document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  function toggleTheme() {
+      setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  }
 
   useEffect(() => {
     if (authToken) {
@@ -89,42 +98,44 @@ function App(){
     
   }
   return(
-    <div className="appLayout">
-      <Sidebar navItems={navItems}/>
-      <main className="mainContent">
-        <Routes>
-          
-          <Route
-            path="/"
-            element={
-                authToken ? (
-                    <UploadPage
-                        selectedFile={selectedFile}
-                        setSelectedFile={setSelectedFile}
-                        onAnalyze={handleAnalysisClick}
-                        isLoading={isLoading}
-                        error={error}
-                        recentFiles={recentFiles}
-                    />
-                ) : (
-                    <Navigate to="/login" />
-                )
-            }
-          />
-          <Route
-            path = "/results"
-            element={<ResultsPage 
-                      result = {analysisResult} 
-                      setSelectedFile = {setSelectedFile}/>}
-          />
-          <Route 
-            path="/login" 
-            element={<LoginPage 
-                      setAuthToken={setAuthToken}
-                      setUserRole={setUserRole} />} />
-        </Routes>
-      </main>
-    </div>
+          <Routes>
+              <Route path="/login" element={<LoginPage setAuthToken={setAuthToken} setUserRole={setUserRole} />} />
+              <Route path="/register" element={<RegisterPage />} />
+
+              <Route
+                  path="/*"
+                  element={
+                      authToken ? (
+                          <div className="appLayout">
+                              <Sidebar navItems={navItems} />
+                              <main className="mainContent">
+                                  <Routes>
+                                      <Route
+                                          path="/"
+                                          element={
+                                              <UploadPage
+                                                  selectedFile={selectedFile}
+                                                  setSelectedFile={setSelectedFile}
+                                                  onAnalyze={handleAnalysisClick}
+                                                  isLoading={isLoading}
+                                                  error={error}
+                                                  recentFiles={recentFiles}
+                                              />
+                                          }
+                                      />
+                                      <Route
+                                          path="/results"
+                                          element={<ResultsPage result={analysisResult} setSelectedFile={setSelectedFile} />}
+                                      />
+                                  </Routes>
+                              </main>
+                          </div>
+                      ) : (
+                          <Navigate to="/login" />
+                      )
+                  }
+              />
+          </Routes>
   )
 }
 export default App

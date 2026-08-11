@@ -1,0 +1,179 @@
+.authPage {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    padding: 24px;
+}
+
+.authPanel {
+    display: flex;
+    width: 100%;
+    max-width: 960px;
+    min-height: 560px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15);
+}
+
+.authBrandSide {
+    flex: 1;
+    padding: 64px 40px 40px 40px;
+    background:
+        linear-gradient(180deg, rgba(99, 102, 241, 0.08), transparent 60%),
+        repeating-linear-gradient(0deg, var(--border-color) 0px, transparent 1px, transparent 32px),
+        repeating-linear-gradient(90deg, var(--border-color) 0px, transparent 1px, transparent 32px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 32px;
+    color: var(--text-primary);
+}
+
+.authLogo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.authLogo img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.authLogoText {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.authLogoName {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+.authLogoTagline {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.authPitchCard {
+    background: rgba(120, 120, 160, 0.06);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 24px;
+    backdrop-filter: blur(6px);
+}
+
+.authPitchCard h2 {
+    font-size: 20px;
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+}
+
+.authPitchCard p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 20px 0;
+}
+
+.authStats {
+    display: flex;
+    gap: 32px;
+}
+
+.statNumber {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.statLabel {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.authFormSide {
+    flex: 1;
+    background: var(--bg-surface);
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.authFormSide h2 {
+    color: var(--text-primary);
+    font-size: 22px;
+    margin: 0 0 6px 0;
+}
+
+.authSubtext {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 0 0 28px 0;
+}
+
+.authField label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.authField input,
+.authField select {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 11px 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.authField input:focus,
+.authField select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.authSubmitButton {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: #ffffff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.authSwitchText {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 20px;
+}
+
+.authSwitchText a {
+    color: var(--accent);
+}

@@ -1,8 +1,30 @@
+:root {
+    --bg-primary: #f4f6fb;
+    --bg-surface: #ffffff;
+    --bg-sidebar: #1b2a4b;
+    --text-primary: #1b2a4b;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --accent: #6d5df6;
+    --accent-hover: #5b4bdb;
+}
+
+[data-theme="dark"] {
+    --bg-primary: #0a0a0f;
+    --bg-surface: #14141f;
+    --bg-sidebar: #0d0d14;
+    --text-primary: #f4f6fb;
+    --text-secondary: #9ca3af;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --accent: #818cf8;
+    --accent-hover: #6366f1;
+}
+
 .appLayout {
     display: flex;
     min-height: 100vh;
     font-family: system-ui, -apple-system, sans-serif;
-    background-color: #f4f6fb;
+    background-color: var(--bg-primary);
     text-align: left;
 }
 
