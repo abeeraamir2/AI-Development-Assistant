@@ -13,7 +13,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,7 +34,7 @@ def hello():
 
 
 app.include_router(analyzer_overview_router)
-app.include_router(project_router)   # FIX: was imported but never included
+app.include_router(project_router)
 app.include_router(upload_router)
 app.include_router(auth_router)
 app.include_router(test_router)

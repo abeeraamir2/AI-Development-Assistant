@@ -1,11 +1,26 @@
 # backend/routes/analyzer_routes.py
+
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
+
 from services.auth_service import get_current_user
 from services.analysis_service import FALLBACK_RESULT, analyze_requirement
 from services.file_service import extract_text_from_upload
 from services.embedding_service import embed_text
-from database.database import save_analysis, find_related_requirements, save_requirement_embeddings
+
+from database.database import (
+    save_analysis,
+    find_related_requirements,
+    save_requirement_embeddings,
+)
 
 router = APIRouter()
 
@@ -32,6 +47,7 @@ async def upload_file(
         if file:
             filename = file.filename
             extracted_text = await extract_text_from_upload(file)
+
         elif text_input and text_input.strip():
             extracted_text = text_input.strip()
 
@@ -42,13 +58,20 @@ async def upload_file(
             )
 
         scopes_list = None
-        if scopes:
-            scopes_list = [s.strip() for s in scopes.split(",") if s.strip()]
 
+        if scopes:
+            scopes_list = [
+                s.strip()
+                for s in scopes.split(",")
+                if s.strip()
+            ]
 
         query_embedding = embed_text(extracted_text)
-        related_context = await find_related_requirements(resolved_project_id, query_embedding)
 
+        related_context = await find_related_requirements(
+            resolved_project_id,
+            query_embedding
+        )
 
         analysis_result = analyze_requirement(
             extracted_text,
@@ -63,7 +86,6 @@ async def upload_file(
         analysis_result["project_id"] = resolved_project_id
         analysis_result["filename"] = filename
 
-
         try:
             saved_id = await save_analysis(
                 project_id=resolved_project_id,
@@ -73,24 +95,30 @@ async def upload_file(
                 analysis_result=analysis_result,
                 user_email=user_email,
             )
+
             analysis_result["analysis_id"] = saved_id
 
-            
             await save_requirement_embeddings(
-                resolved_project_id, saved_id, analysis_result.get("criteria", [])
+                resolved_project_id,
+                saved_id,
+                analysis_result.get("criteria", [])
             )
+
         except Exception as db_error:
-        
-            print(f"[WARN] Failed to save analysis to database: {db_error}")
+            print(
+                f"[WARN] Failed to save analysis to database: {db_error}"
+            )
 
         return analysis_result
 
     except HTTPException:
-        
         raise
+
     except Exception as e:
         print(f"[ERROR] Unexpected error in /upload: {e}")
+
         fallback = dict(FALLBACK_RESULT)
         fallback["project"] = resolved_project_name
         fallback["project_id"] = resolved_project_id
+
         return fallback

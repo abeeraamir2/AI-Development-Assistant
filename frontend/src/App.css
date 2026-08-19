@@ -1,82 +1,43 @@
-:root {
-    --bg-primary: #f4f6fb;
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="light"] {
+    --bg-primary: #f8fafc;
     --bg-surface: #ffffff;
-    --bg-sidebar: #1b2a4b;
-    --text-primary: #1b2a4b;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --accent: #6d5df6;
-    --accent-hover: #5b4bdb;
+    --bg-surface-hover: #f1f5f9;
+    --bg-sidebar: #ffffff;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+
+    --border-color: #e2e8f0;
+
+    --accent: #4f8cff;
+    --accent-hover: #3b82f6;
 }
 
 [data-theme="dark"] {
-    --bg-primary: #0a0a0f;
-    --bg-surface: #14141f;
-    --bg-sidebar: #0d0d14;
-    --text-primary: #f4f6fb;
+    --bg-primary: #0b0c10;
+    --bg-surface: #12141c;
+    --bg-surface-hover: #181b26;
+    --bg-sidebar: #090a0c;
+
+    --text-primary: #f3f4f6;
     --text-secondary: #9ca3af;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --accent: #818cf8;
-    --accent-hover: #6366f1;
+    --text-muted: #6b7280;
+
+    --border-color: #1f2330;
+
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
 }
 
-.appLayout {
-    display: flex;
-    min-height: 100vh;
-    font-family: system-ui, -apple-system, sans-serif;
+body {
     background-color: var(--bg-primary);
-    text-align: left;
-}
-
-.mainContent {
-    flex: 1;
-    padding: 32px 40px;
-    max-width: 720px;
-}
-
-.errorMessage {
-    background-color: #fef2f2;
-    color: #b91c1c;
-    border: 1px solid #fecaca;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    margin-bottom: 16px;
-}
-
-.tabRow {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.tab, .tabActive {
-    background: none;
-    border: none;
-    padding: 10px 14px;
-    font-size: 14px;
-    cursor: pointer;
-    color: #6b7280;
-}
-
-.tabActive {
-    color: #4338ca;
-    font-weight: 600;
-    border-bottom: 2px solid #4338ca;
-}
-
-.backButton {
-    background: none;
-    border: none;
-    color: #4338ca;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-bottom: 16px;
-    padding: 0;
-}
-
-.backButton:hover {
-    text-decoration: underline;
+    color: var(--text-primary);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
 }

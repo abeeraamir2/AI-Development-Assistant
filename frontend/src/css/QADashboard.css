@@ -1,0 +1,335 @@
+/* Container Dark Canvas */
+.dashboardContainer {
+  background-color: #0b0d12;
+  color: #f3f4f6;
+  min-height: 100vh;
+  padding: 24px 32px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: #8a8f9d;
+}
+
+.activeBreadcrumb {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #27272a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* Title Section */
+.titleSection {
+  margin-bottom: 24px;
+}
+
+.mainTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Metric Cards Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metricCard {
+  background-color: #12141c;
+  border: 1px solid #1f2330;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.metricCardHighlight {
+  border-bottom: 3px solid #f59e0b;
+}
+
+.metricHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.metricValue {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 12px;
+}
+
+.metricCardHighlight .metricValue {
+  color: #f59e0b;
+}
+
+/* Main Layout Grid */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+}
+
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Cards Surface */
+.card {
+  background-color: #12141c;
+  border: 1px solid #1f2330;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cardHeader h2, .cardHeader h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #ffffff;
+}
+
+.viewAll {
+  color: #818cf8;
+  font-size: 13px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* Table Styling */
+.runsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.runsTable th {
+  color: #6b7280;
+  font-weight: 500;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #1f2330;
+}
+
+.runsTable td {
+  padding: 16px 0;
+  border-bottom: 1px solid #171a26;
+  vertical-align: middle;
+}
+
+.runTitle {
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 2px;
+}
+
+.runFile {
+  font-family: monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tagGroup {
+  display: flex;
+  gap: 6px;
+}
+
+.tag {
+  background-color: #1e2333;
+  color: #94a3b8;
+  border: 1px solid #2e354a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.statusFailed {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.statusSuccess {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.coverageWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressBar {
+  width: 80px;
+  height: 4px;
+  background-color: #1f2330;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.progressFailed {
+  background-color: #ef4444;
+}
+
+.progressSuccess {
+  background-color: #10b981;
+}
+
+/* AI Testing Insight Card */
+.aiInsightCard {
+  background-color: #151824;
+  border: 1px solid #2d264f;
+}
+
+.aiHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.aiHeader h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #a5b4fc;
+  margin: 0;
+}
+
+.aiTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.aiText {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+.aiText code {
+  background-color: #1e2235;
+  color: #cbd5e1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.aiButton {
+  width: 100%;
+  background-color: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.aiButton:hover {
+  background-color: #4f46e5;
+}
+
+/* Environments List */
+.envList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.envItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.envName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d1d5db;
+}
+
+.envDotActive {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+}
+
+.envVersion {
+  font-family: monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
