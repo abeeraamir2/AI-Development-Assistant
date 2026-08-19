@@ -1,41 +1,156 @@
-.side-bar {
-    width: 220px;
-    background-color: #1b2a4b;
-    padding: 24px 16px;
-    color: #cbd5e1;
+.sidebar {
+    width: 240px;
+    background-color: var(--bg-surface, #ffffff);
+    border-right: 1px solid var(--border-color, #e2e8f0);
+    padding: 24px 18px;
+    color: var(--text-secondary, #475569);
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
-.side-bar-logo {
-    color: #ffffff;
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 32px;
+/* Brand Section */
+.brandSection {
+    margin-bottom: 24px;
+}
+
+.brandHeader {
     display: flex;
     align-items: center;
+    gap: 10px;
+}
+
+/* Lucide Sparkles Icon Frame */
+.logoIconBox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1.5px solid var(--text-primary, #0f172a);
+    background-color: transparent;
+    color: var(--text-primary, #0f172a);
+}
+
+.dark .logoIconBox {
+    border-color: var(--text-primary, #ffffff);
+    color: var(--text-primary, #ffffff);
+}
+
+/* DevAssist Title: Bold & Large */
+.authLogoName {
+    color: var(--text-primary, #0f172a);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+.dark .authLogoName {
+    color: var(--text-primary, #ffffff);
+}
+
+.authLogoTagline {
+    font-size: 9.5px;
+    color: var(--text-muted, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+    font-weight: 700;
+}
+
+/* New Analysis Button */
+.newTestBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background-color: #4d8bf8;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(77, 139, 248, 0.25);
+    transition: all 0.15s ease;
+}
+
+.newTestBtn:hover {
+    background-color: #3b76e8;
+}
+
+/* Workspace Group */
+.workspaceGroup {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
 }
 
-.side-bar nav ul {
+.sectionLabel {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted, #94a3b8);
+    padding-left: 8px;
+}
+
+.navList {
     list-style: none;
     padding: 0;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.nav-item {
-    padding: 12px 14px;
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
     border-radius: 8px;
+    color: var(--text-secondary, #475569);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s ease;
     cursor: pointer;
-    margin-bottom: 4px;
-    font-size: 14px;
+    background: transparent;
+    border: none;
+    text-align: left;
 }
 
-.nav-item-active {
-    background-color: #2a3d68;
-    color: #ffffff;
-    font-weight: 600;
-    padding: 12px 14px;
+.navItem:hover {
+    background-color: var(--bg-subtle, #f1f5f9);
+    color: var(--text-primary, #0f172a);
+}
+
+.navItemActive {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
     border-radius: 8px;
-    margin-bottom: 4px;
-    font-size: 14px;
+    background-color: rgba(77, 139, 248, 0.1);
+    color: #4d8bf8;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.sidebarFooter {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color, #e2e8f0);
 }

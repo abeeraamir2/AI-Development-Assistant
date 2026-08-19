@@ -8,9 +8,9 @@ export default function ActiveProjectsAndActions({ projects = [] }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Active Projects Activity */}
+      {/* Your Projects Activity */}
       <div className="lg:col-span-7 p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
-        <h2 className="font-bold text-base tracking-wide">Active Projects Activity</h2>
+        <h2 className="font-bold text-base tracking-wide">Your Projects Activity</h2>
 
         <div className="space-y-4 pt-1">
           {projects.map((proj, idx) => (

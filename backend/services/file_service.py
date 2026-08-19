@@ -1,41 +1,41 @@
-import os
+# backend/services/file_service.py
 from io import BytesIO
-from fastapi import APIRouter, UploadFile, File, HTTPException,Depends
 from pypdf import PdfReader
 from docx import Document
-from database.database import save_analysis, get_recent_analyses
-from services.gemini_service import analyze_requirement
-from services.auth_service import require_role
-router = APIRouter()
+from fastapi import HTTPException
 
-ALLOWED_EXTENSIONS = (".pdf",".docx",".txt")
+ALLOWED_EXTENSIONS = (".pdf", ".docx", ".txt", ".md")
 MAX_FILE_SIZE_MB = 10
 
-def extract_text_from_pdf(file_bytes):
+def extract_text_from_pdf(file_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(file_bytes))
     text = ""
     for page in reader.pages:
-        text += page.extract_text() + "\n"
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted + "\n"
     return text
 
-def extract_text_from_docx(file_bytes):
+def extract_text_from_docx(file_bytes: bytes) -> str:
     doc = Document(BytesIO(file_bytes))
     text = ""
     for paragraph in doc.paragraphs:
         text += paragraph.text + "\n"
     return text
 
-@router.post("/upload")
-async def upload_file(file: UploadFile = File(...),current_user: dict = Depends(require_role(["Developer", "Admin"]))):
-
+async def extract_text_from_upload(file) -> str:
+    """
+    Validates uploaded file type, size, and content, then extracts raw text.
+    """
     if not file.filename.endswith(ALLOWED_EXTENSIONS):
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type. Please upload one of: {', '.join(ALLOWED_EXTENSIONS)}"
         )
+        
     contents = await file.read()
 
-    size_mb = len(contents)/(1024*1024)
+    size_mb = len(contents) / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         raise HTTPException(
             status_code=400,
@@ -64,12 +64,4 @@ async def upload_file(file: UploadFile = File(...),current_user: dict = Depends(
             detail="No readable text found in this file (it may be a scanned/image-only document)."
         )
 
-    analysis_result = analyze_requirement(extracted_text)
-    print(type(analysis_result))
-    print(analysis_result)
-    await save_analysis(file.filename, extracted_text, analysis_result)
-    return analysis_result
-
-@router.get("/history")
-async def get_history():
-    return await get_recent_analyses()
+    return extracted_text.strip()

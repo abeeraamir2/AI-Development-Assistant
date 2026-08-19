@@ -1,133 +1,157 @@
-from datetime import datetime
+from typing import Optional
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from services.auth_service import get_current_user
-from database.database import analysis_collection
+from database.database import analysis_collection, projects_collection
 
 router = APIRouter()
 
 
+def to_aware_utc(dt):
+    """Mongo returns naive datetimes (assumed UTC). Normalize to aware
+    so they can be safely compared with timezone-aware datetimes."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 @router.get("/developer-overview-stats")
 async def get_developer_overview_stats(
+    project_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
 ):
-  user_email = current_user["email"]
+    user_email = current_user["email"]
+    now = datetime.now(timezone.utc)
 
-  # Query user analysis history
-  cursor = analysis_collection.find({"user_email": user_email}).sort(
-      "created_at", -1
-  )
-  analyses = await cursor.to_list(length=100)
+    project_cursor = projects_collection.find({
+        "$or": [
+            {"owner_email": user_email},
+            {"visibility": "public"},
+        ]
+    })
+    all_projects = await project_cursor.to_list(length=200)
+    total_projects_count = len(all_projects)
 
-  total_reqs = len(analyses)
-  completed_count = 0
-  review_count = 0
 
-  recent_analyses = []
-  project_req_counts = {}
+    query = {"user_email": user_email}
+    if project_id:
+        query["project_id"] = project_id
 
-  for idx, item in enumerate(analyses):
-    status = item.get("status", "Completed")
-    if status == "Needs Review":
-      review_count += 1
-    else:
-      completed_count += 1
+    cursor = analysis_collection.find(query).sort("created_at", -1)
+    analyses = await cursor.to_list(length=300)
 
-    project_name = item.get("project_name", "Project Alpha")
-    project_req_counts[project_name] = (
-        project_req_counts.get(project_name, 0) + 1
+    total_reqs = len(analyses)
+    completed_count = 0
+    review_count = 0
+    recent_analyses = []
+    complexity_counts = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+    this_week_count = 0
+    prev_week_count = 0
+
+    week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+
+    for item in analyses:
+        status = item.get("status", "COMPLETED")
+        if status in ("Needs Review", "NEEDS_REVIEW"):
+            review_count += 1
+        else:
+            completed_count += 1
+
+        complexity = item.get("complexity", "MEDIUM")
+        if complexity in complexity_counts:
+            complexity_counts[complexity] += 1
+
+        created = to_aware_utc(item.get("created_at"))
+        if created:
+            if created >= week_ago:
+                this_week_count += 1
+            elif created >= two_weeks_ago:
+                prev_week_count += 1
+
+        if len(recent_analyses) < 4:
+            recent_analyses.append({
+                "id": str(item["_id"]),
+                "requirement": item.get("title", item.get("filename", "Requirement")),
+                "project": item.get("project_name", "Unknown Project"),
+                "time": (
+                    item.get("created_at").strftime("%b %d, %H:%M")
+                    if item.get("created_at")
+                    else "Just now"
+                ),
+                "status": status,
+            })
+
+
+    success_rate = (
+        round((completed_count / total_reqs) * 100) if total_reqs > 0 else 0
     )
 
-    if len(recent_analyses) < 4:
-      recent_analyses.append({
-          "id": str(item["_id"]),
-          "requirement": item.get("title", item.get("filename", "Requirement")),
-          "project": project_name,
-          "time": (
-              item.get("created_at").strftime("%b %d, %H:%M")
-              if item.get("created_at")
-              else "Just now"
-          ),
-          "status": status,
-      })
+    if prev_week_count > 0:
+        this_week_change_pct = round(
+            ((this_week_count - prev_week_count) / prev_week_count) * 100
+        )
+    elif this_week_count > 0:
+        this_week_change_pct = None  
+    else:
+        this_week_change_pct = 0
 
-  # Fallback preview data if collection is empty
-  if total_reqs == 0:
-    total_reqs = 18
-    completed_count = 15
-    review_count = 3
-    recent_analyses = [
-        {
-            "id": "1",
-            "requirement": "Password Reset",
-            "project": "Project Alpha",
-            "time": "2 min ago",
-            "status": "Completed",
-        },
-        {
-            "id": "2",
-            "requirement": "Payment Processing",
-            "project": "E-Commerce Platform",
-            "time": "1 hour ago",
-            "status": "Completed",
-        },
-        {
-            "id": "3",
-            "requirement": "User Authentication",
-            "project": "Project Alpha",
-            "time": "3 hours ago",
-            "status": "Needs Review",
-        },
-        {
-            "id": "4",
-            "requirement": "Profile Management",
-            "project": "Task Manager",
-            "time": "Yesterday",
-            "status": "Completed",
-        },
+
+    complexity_breakdown = [
+        {"name": "Low", "value": complexity_counts["LOW"], "color": "#34d399"},
+        {"name": "Medium", "value": complexity_counts["MEDIUM"], "color": "#fbbf24"},
+        {"name": "High", "value": complexity_counts["HIGH"], "color": "#fb7185"},
     ]
-    project_req_counts = {
-        "Project Alpha": 8,
-        "E-Commerce Platform": 5,
-        "Task Management": 3,
+
+    activity_map = {}
+    for item in analyses:
+        created = item.get("created_at")
+        if not created:
+            continue
+        day_key = created.strftime("%b %d")
+        activity_map[day_key] = activity_map.get(day_key, 0) + 1
+
+    activity_data = [
+        {"name": day, "runs": count}
+        for day, count in activity_map.items()
+    ]
+
+    all_analyses_cursor = analysis_collection.find({"user_email": user_email})
+    all_analyses = await all_analyses_cursor.to_list(length=1000)
+
+    counts_by_project_id = {}
+    for item in all_analyses:
+        pid = item.get("project_id")
+        counts_by_project_id[pid] = counts_by_project_id.get(pid, 0) + 1
+
+    palette = ["#a78bfa", "#34d399", "#fb923c", "#60a5fa", "#f472b6"]
+    max_count = max(counts_by_project_id.values(), default=0)
+
+    your_projects = []
+    for i, proj in enumerate(all_projects):
+        pid = str(proj["_id"])
+        count = counts_by_project_id.get(pid, 0)
+        your_projects.append({
+            "name": proj["name"],
+            "reqs": count,
+            "color": palette[i % len(palette)],
+            "percent": int((count / max_count) * 100) if max_count else 0,
+        })
+
+    return {
+        "metrics": {
+            "active_projects": total_projects_count,
+            "requirements_analyzed": total_reqs,
+            "completed_analyses": completed_count,
+            "needs_attention": review_count,  
+            "success_rate": success_rate,
+            "this_week_count": this_week_count,
+            "this_week_change_pct": this_week_change_pct,
+            "complexity_breakdown": complexity_breakdown,
+        },
+        "activity_trend": activity_data,
+        "recent_analyses": recent_analyses,
+        "active_projects": your_projects,
     }
-
-  success_rate = (
-      round((completed_count / total_reqs) * 100) if total_reqs > 0 else 92
-  )
-
-  # Active projects list with progress widths
-  active_projects = []
-  colors = ["#a78bfa", "#34d399", "#fb923c"]
-  for i, (p_name, count) in enumerate(project_req_counts.items()):
-    active_projects.append({
-        "name": p_name,
-        "reqs": count,
-        "color": colors[i % len(colors)],
-        "percent": min(100, int((count / total_reqs) * 100)),
-    })
-
-  # Activity trend line chart data
-  activity_data = [
-      {"name": "0", "runs": 2},
-      {"name": "1", "runs": 5},
-      {"name": "2", "runs": 4},
-      {"name": "3", "runs": 7},
-      {"name": "4", "runs": 6},
-      {"name": "5", "runs": 9},
-      {"name": "6", "runs": 11},
-      {"name": "7", "runs": 8},
-      {"name": "8", "runs": 10},
-  ]
-
-  return {
-      "metrics": {
-          "active_projects": len(project_req_counts) or 4,
-          "requirements_analyzed": total_reqs,
-          "completed_analyses": completed_count,
-          "needs_attention": review_count,
-          "success_rate": success_rate,
-      },
-      "activity_trend": activity_data,
-      "recent_analyses": recent_analyses,
-      "active_projects": active_projects,
-}

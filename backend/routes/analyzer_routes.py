@@ -5,7 +5,13 @@ from services.auth_service import get_current_user
 from services.analysis_service import FALLBACK_RESULT, analyze_requirement
 from services.file_service import extract_text_from_upload
 from services.embedding_service import embed_text
-from database.database import save_analysis, find_related_requirements, save_requirement_embeddings
+from database.database import (
+    save_analysis,
+    get_recent_analyses,
+    get_analysis_by_id,
+    find_related_requirements,
+    save_requirement_embeddings,
+)
 
 router = APIRouter()
 
@@ -94,3 +100,32 @@ async def upload_file(
         fallback["project"] = resolved_project_name
         fallback["project_id"] = resolved_project_id
         return fallback
+
+
+@router.get("/history")
+async def history(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
+):
+    """Summary rows for the History list (title, project, status, date)."""
+    user_email = current_user.get("email") or current_user.get("user_email")
+    return await get_recent_analyses(user_email, limit=limit)
+
+
+@router.get("/history/{analysis_id}")
+async def history_detail(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Full analysis document for one history row — used by the History
+    detail drawer (Generated Sections, Source Documents) and by
+    "Open Full Analysis" to populate the /results page.
+    """
+    user_email = current_user.get("email") or current_user.get("user_email")
+    doc = await get_analysis_by_id(analysis_id, user_email)
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Analysis not found.")
+
+    return doc

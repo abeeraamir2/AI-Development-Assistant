@@ -1,141 +1,195 @@
-import { useState,useEffect } from "react";
-import { Routes,Route,useNavigate,Navigate } from "react-router-dom"
-import ResultsPage from "./pages/ResultsPage"
-import UploadPage from "./pages/UploadPage"
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header"
-import RecentList from "./components/RecentList"
-import UploadFileBox from "./components/UploadFileBox"
-import ResultsPanel from "./components/ResultsPanel"
-import mockAnalysis from "./data/mockAnalysis.json"
+import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import AnalyzerPage from "./pages/developer/AnalyzerPage";
+import Sidebar from "./components/Shared/Sidebar";
+import TopHeader from "./components/Shared/TopHeader";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import "./App.css"
+import OverviewPage from "./pages/developer/OverviewPage";
+import Dashboard from "./pages/test-engineer/Dashboard";
+import TestGeneratorPage from "./pages/test-engineer/TestGeneratorPage";
+import BugSummarizerPage from "./pages/test-engineer/BugSummarizerPage";
+import AnalysisHistoryPage from "./pages/developer/AnalysisHistoryPage";
+import "./App.css";
+import ResultsPage from "./pages/developer/ResultsPage";
 
-function App(){
-  const navItems = [
-    {id: 1, label:"Requirement Analyzer", active:true},
-    {id: 2, label:"My Analysis", active:false},
-    {id: 3, label:"Settings", active:false}
-  ]
+function App() {
+    const [analysisResult, setAnalysisResult] = useState(null);
+    const [recentFiles, setRecentFiles] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [activeProjectId, setActiveProjectId] = useState(null);
+    const [authToken, setAuthToken] = useState(
+        () => localStorage.getItem("token") || localStorage.getItem("authToken") || null
+    );
+    const [userRole, setUserRole] = useState(
+        () => localStorage.getItem("userRole") || null
+    );
+    const [userEmail, setUserEmail] = useState(
+        () => localStorage.getItem("userEmail") || null
+    );
+    const [theme, setTheme] = useState("light");
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [isLoading,setIsLoading] = useState(false);
-  const [error,setError] = useState(null);
-  const [recentFiles, setRecentFiles] = useState([]);
-  const [authToken,setAuthToken] = useState(null);
-  const [userRole,setUserRole] = useState(null);
-  const [theme, setTheme] = useState("light");
+    const navigate = useNavigate();
 
-  const navigate = useNavigate();
+    const handleLogout = () => {
+        setAuthToken(null);
+        setUserRole(null);
+        setUserEmail(null);
+        localStorage.removeItem("token");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("userEmail");
+        window.location.href = "/login";
+    };
 
-  useEffect(() => {
-      document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    useEffect(() => {
+        document.documentElement.setAttribute("data-theme", theme);
+    }, [theme]);
 
-  function toggleTheme() {
-      setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  }
-
-  useEffect(() => {
-    if (authToken) {
-      fetchHistory();
+    function toggleTheme() {
+        setTheme((prev) => (prev === "light" ? "dark" : "light"));
     }
-  }, [authToken]);
 
-  async function fetchHistory() {
-      try {
-          const response = await fetch("http://localhost:8000/history");
+    useEffect(() => {
+        if (authToken) {
+            fetchHistory();
+            fetchProjects();
+        }
+    }, [authToken]);
 
-          if (!response.ok) {
-              throw new Error("Failed to fetch history");
-          }
-
-          const data = await response.json();
-
-          setRecentFiles(data);
-
-      } catch (error) {
-          console.log(error);
-      }
-  }
-  async function handleAnalysisClick(){
-    if (!selectedFile){
-      setError("Please select a file before analyzing")
-      setSelectedFile(null)
-      return;
+    async function fetchHistory() {
+        try {
+            const response = await fetch("http://localhost:8000/history", {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            if (!response.ok) throw new Error("Failed to fetch history");
+            const data = await response.json();
+            setRecentFiles(data);
+        } catch (error) {
+            console.log(error);
+        }
     }
-    setIsLoading(true)
-    setError(null)
-    setAnalysisResult(null);
 
-    try{
-      const formData = new FormData()
-      formData.append("file",selectedFile)
-      
-      const response = await fetch("http://localhost:8000/upload",{
-        method:"POST",
-        headers: { "Authorization": `Bearer ${authToken}` },
-        body:formData
-      })
-
-      if(!response.ok){
-        const errorData = await response.json();
-        console.log(errorData);
-        throw new Error("Server responded with an error");
-      }
-      const data = await response.json()    
-      setAnalysisResult(data)
-      await fetchHistory();
-      navigate("/results")
-    }catch(error){
-      setError(error.message);
-      
-    }finally{
-      setIsLoading(false)
+    async function fetchProjects() {
+        try {
+            const response = await fetch("http://localhost:8000/projects", {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            setProjects(data);
+            if (data.length > 0 && !activeProjectId) {
+                setActiveProjectId(data[0].id);
+            }
+        } catch (err) {
+            console.log(err);
+        }
     }
-    
-  }
-  return(
-          <Routes>
-              <Route path="/login" element={<LoginPage setAuthToken={setAuthToken} setUserRole={setUserRole} />} />
-              <Route path="/register" element={<RegisterPage />} />
+    return (
+    <Routes>
+        <Route
+            path="/login"
+            element={
+                <LoginPage
+                    setAuthToken={setAuthToken}
+                    setUserRole={setUserRole}
+                    setUserEmail={setUserEmail}
+                />
+            }
+        />
 
-              <Route
-                  path="/*"
-                  element={
-                      authToken ? (
-                          <div className="appLayout">
-                              <Sidebar navItems={navItems} />
-                              <main className="mainContent">
-                                  <Routes>
-                                      <Route
-                                          path="/"
-                                          element={
-                                              <UploadPage
-                                                  selectedFile={selectedFile}
-                                                  setSelectedFile={setSelectedFile}
-                                                  onAnalyze={handleAnalysisClick}
-                                                  isLoading={isLoading}
-                                                  error={error}
-                                                  recentFiles={recentFiles}
-                                              />
-                                          }
-                                      />
-                                      <Route
-                                          path="/results"
-                                          element={<ResultsPage result={analysisResult} setSelectedFile={setSelectedFile} />}
-                                      />
-                                  </Routes>
-                              </main>
-                          </div>
-                      ) : (
-                          <Navigate to="/login" />
-                      )
-                  }
-              />
-          </Routes>
-  )
+        <Route path="/register" element={<RegisterPage />} />
+
+        {authToken ? (
+            <Route
+                path="/*"
+                element={
+                    <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-primary)]">
+                        <Sidebar
+                            userEmail={userEmail}
+                            userRole={userRole}
+                            onLogout={handleLogout}
+                        />
+
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <TopHeader
+                                theme={theme}
+                                toggleTheme={toggleTheme}
+                            />
+
+                            <main className="flex-1 overflow-y-auto">
+                                <Routes>
+                                    <Route
+                                        path="/"
+                                        element={
+                                            userRole === "QA" ? (
+                                                <Dashboard theme={theme} />
+                                            ) : (
+                                                <OverviewPage
+                                                    authToken={authToken}
+                                                    userRole={userRole}
+                                                />
+                                            )
+                                        }
+                                    />
+
+                                    <Route
+                                        path="/analyzer"
+                                        element={
+                                            <AnalyzerPage
+                                                authToken={authToken}
+                                                selectedProject={(() => {
+                                                    const proj = projects.find((p) => p.id === activeProjectId);
+                                                    return proj
+                                                        ? { _id: proj.id, name: proj.name }
+                                                        : { _id: null, name: "Project Alpha" };
+                                                })()}
+                                            />
+                                        }
+                                    />
+
+                                    <Route
+                                        path="/results"
+                                        element={<ResultsPage />}
+                                    />
+
+                                    <Route
+                                        path="/history"
+                                        element={<AnalysisHistoryPage authToken={authToken} />}
+                                    />
+
+                                    <Route
+                                        path="/test-generator"
+                                        element={
+                                            <TestGeneratorPage
+                                                authToken={authToken}
+                                            />
+                                        }
+                                    />
+
+
+                                    <Route
+                                        path="/bug-summarizer"
+                                        element={<BugSummarizerPage />}
+                                    />
+
+                                    <Route
+                                        path="*"
+                                        element={<Navigate to="/" replace />}
+                                    />
+                                </Routes>
+                            </main>
+                        </div>
+                    </div>
+                }
+            />
+        ) : (
+            <Route
+                path="*"
+                element={<Navigate to="/login" replace />}
+            />
+        )}
+    </Routes>
+);
 }
-export default App
+export default App;

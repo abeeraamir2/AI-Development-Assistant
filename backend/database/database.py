@@ -2,6 +2,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from datetime import datetime, timezone
+from bson import ObjectId
 
 load_dotenv()
 
@@ -197,3 +198,20 @@ async def find_related_requirements(project_id: str, query_embedding: list[float
             "excerpt": doc["excerpt"],
         })
     return results
+
+async def get_analysis_by_id(analysis_id: str, user_email: str):
+    """Fetch one full analysis document, scoped to the owning user."""
+    try:
+        obj_id = ObjectId(analysis_id)
+    except Exception:
+        return None
+
+    doc = await analysis_collection.find_one({"_id": obj_id, "user_email": user_email})
+    if not doc:
+        return None
+
+    doc["id"] = str(doc["_id"])
+    doc["_id"] = str(doc["_id"])
+    if doc.get("created_at"):
+        doc["created_at"] = doc["created_at"].isoformat()
+    return doc

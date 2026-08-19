@@ -19,13 +19,12 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
     try {
       setIsSubmitting(true);
 
-      const token = localStorage.getItem("token") || localStorage.getItem("authToken");
       const response = await fetch("http://localhost:8000/projects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
         },
+        credentials: "include",
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
@@ -41,12 +40,10 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
       const newProject = await response.json();
       toast.success("Project created successfully");
 
-      // Notify parent component / update global state
       if (onProjectCreated) {
         onProjectCreated(newProject);
       }
 
-      // Reset form & close
       setName("");
       setDescription("");
       setVisibility("private");
@@ -62,47 +59,47 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
+          {/* Backdrop with theme-aware blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/75 backdrop-blur-xs"
+            className="fixed inset-0 bg-black/50 dark:bg-black/75 backdrop-blur-xs"
           />
 
-          {/* Modal Card */}
+          {/* Modal Card with dynamic theme variables */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="relative w-full max-w-lg overflow-hidden rounded-xl border border-[var(--border-color,#27272a)] bg-[#121216] p-6 shadow-2xl z-10"
+            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-2xl z-10 text-[var(--text-primary)] transition-colors"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-1">
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
                 Create New Project
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer"
+                className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p className="mt-1 text-xs text-zinc-400 leading-relaxed">
+            <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
               Create a project to organize requirements, analyses, tests and
               development context.
             </p>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              {/* Project Name Field */}
+              {/* Project Name */}
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
                   Project Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -111,13 +108,13 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. E-Commerce Platform"
                   required
-                  className="w-full rounded-lg border border-zinc-800 bg-[#18181d] px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#4d8bf8] focus:outline-none focus:ring-1 focus:ring-[#4d8bf8] transition-colors"
                 />
               </div>
 
-              {/* Description Field */}
+              {/* Description */}
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
                   Description
                 </label>
                 <textarea
@@ -125,51 +122,51 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Briefly describe your project..."
                   rows={3}
-                  className="w-full rounded-lg border border-zinc-800 bg-[#18181d] px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors resize-none"
+                  className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#4d8bf8] focus:outline-none focus:ring-1 focus:ring-[#4d8bf8] transition-colors resize-none"
                 />
               </div>
 
               {/* Visibility Options */}
               <div className="space-y-2 pt-1">
-                <label className="block text-xs font-medium text-zinc-300">
+                <label className="block text-xs font-semibold text-[var(--text-primary)]">
                   Visibility <span className="text-rose-500">*</span>
                 </label>
 
                 {/* Private Option */}
-                <label className="flex items-start gap-3 cursor-pointer group">
+                <label className="flex items-start gap-3 cursor-pointer group p-2 rounded-xl hover:bg-[var(--bg-subtle)] transition-colors">
                   <input
                     type="radio"
                     name="visibility"
                     value="private"
                     checked={visibility === "private"}
                     onChange={(e) => setVisibility(e.target.value)}
-                    className="mt-0.5 h-3.5 w-3.5 text-indigo-500 border-zinc-700 bg-zinc-900 focus:ring-0 focus:ring-offset-0 accent-indigo-500 cursor-pointer"
+                    className="mt-0.5 h-3.5 w-3.5 text-[#4d8bf8] border-[var(--border-color)] bg-[var(--bg-subtle)] accent-[#4d8bf8] cursor-pointer"
                   />
                   <div>
-                    <span className="block text-xs font-medium text-zinc-200 group-hover:text-white">
+                    <span className="block text-xs font-medium text-[var(--text-primary)]">
                       Private
                     </span>
-                    <span className="block text-[11px] text-zinc-400">
+                    <span className="block text-[11px] text-[var(--text-muted)]">
                       Only you can access it.
                     </span>
                   </div>
                 </label>
 
                 {/* Public Option */}
-                <label className="flex items-start gap-3 cursor-pointer group">
+                <label className="flex items-start gap-3 cursor-pointer group p-2 rounded-xl hover:bg-[var(--bg-subtle)] transition-colors">
                   <input
                     type="radio"
                     name="visibility"
                     value="public"
                     checked={visibility === "public"}
                     onChange={(e) => setVisibility(e.target.value)}
-                    className="mt-0.5 h-3.5 w-3.5 text-indigo-500 border-zinc-700 bg-zinc-900 focus:ring-0 focus:ring-offset-0 accent-indigo-500 cursor-pointer"
+                    className="mt-0.5 h-3.5 w-3.5 text-[#4d8bf8] border-[var(--border-color)] bg-[var(--bg-subtle)] accent-[#4d8bf8] cursor-pointer"
                   />
                   <div>
-                    <span className="block text-xs font-medium text-zinc-200 group-hover:text-white">
+                    <span className="block text-xs font-medium text-[var(--text-primary)]">
                       Public
                     </span>
-                    <span className="block text-[11px] text-zinc-400">
+                    <span className="block text-[11px] text-[var(--text-muted)]">
                       Anyone with access can view it.
                     </span>
                   </div>
@@ -182,14 +179,14 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
                   type="button"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !name.trim()}
-                  className="flex items-center gap-2 rounded-lg bg-[#b5a7ff] hover:bg-[#a695ff] px-4 py-2 text-xs font-semibold text-[#14141f] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="flex items-center gap-2 rounded-xl bg-[#4d8bf8] hover:bg-[#3b76e8] px-4 py-2 text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                   {isSubmitting && <Loader2 size={13} className="animate-spin" />}
                   <span>Create Project</span>

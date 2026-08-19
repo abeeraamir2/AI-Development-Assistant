@@ -1,4 +1,4 @@
-from gemini_service import analyze_requirement
+from analysis_service import analyze_requirement
 
 sample_text = """
 The system should allow users to register for an account using their name, email, and password.

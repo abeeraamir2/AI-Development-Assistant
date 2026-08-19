@@ -11,7 +11,9 @@ import RelatedRequirementsCard from "../../components/Requirement-analyzer/Relat
 import RecentAnalysisList from "../../components/Requirement-analyzer/RecentAnalysisList";
 import AnalyzingRequirementScreen from "../../components/Requirement-analyzer/AnalyzingRequirementScreen";
 
-export default function AnalyzerPage({ authToken, selectedProject = "Project Alpha" }) {
+const DEFAULT_PROJECT = { _id: null, name: "Project Alpha" };
+
+export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJECT }) {
   const [inputText, setInputText] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -38,13 +40,19 @@ export default function AnalyzerPage({ authToken, selectedProject = "Project Alp
       return;
     }
 
+    if (!selectedProject?._id) {
+      toast.error("Please select a project before analyzing.");
+      return;
+    }
+
     setLoading(true);
     const formData = new FormData();
 
     if (uploadedFile) formData.append("file", uploadedFile);
     if (inputText.trim()) formData.append("text_input", inputText.trim());
     formData.append("scopes", JSON.stringify(selectedScopes));
-    formData.append("project", selectedProject);
+    formData.append("project", selectedProject.name);
+    formData.append("project_id", selectedProject._id);
 
     const startTime = Date.now();
 
@@ -112,7 +120,7 @@ export default function AnalyzerPage({ authToken, selectedProject = "Project Alp
               <div className="flex items-center gap-2 text-[var(--text-secondary)] font-medium">
                 <Folder size={15} className="text-[var(--accent)]" />
                 <span>
-                  Project: <strong className="text-[var(--text-primary)]">{selectedProject}</strong>
+                  Project: <strong className="text-[var(--text-primary)]">{selectedProject?.name}</strong>
                 </span>
               </div>
             </div>
