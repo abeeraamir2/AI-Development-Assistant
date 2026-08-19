@@ -7,8 +7,7 @@ function RecentList({ recentFiles }) {
             <ul className="fileList">
                 {recentFiles.map((file) => (
                     <li key={file.id} className="fileRow">
-                        {file.label}
-                        <span className="badge">{file.status}</span>
+                        {file.filename}
                     </li>
                 ))}
             </ul>

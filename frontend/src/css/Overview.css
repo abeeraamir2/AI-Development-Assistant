@@ -1,0 +1,75 @@
+.overviewPage {
+    padding: 8px 0 32px 0;
+}
+
+.overviewTagline {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.statCard {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.statCardLabel {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.statCardValue {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.recentHeading {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.recentTable {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.recentTable th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.recentTable td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summaryCell {
+    color: var(--text-secondary);
+}
+
+.emptyState {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
