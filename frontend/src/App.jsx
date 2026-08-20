@@ -127,7 +127,16 @@ function App() {
             }
         />
 
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+            path="/register"
+            element={
+                <RegisterPage
+                setAuthToken={setAuthToken}
+                setUserRole={setUserRole}
+                setUserEmail={setUserEmail}
+                />
+            }
+        />
 
         {authToken ? (
             <Route

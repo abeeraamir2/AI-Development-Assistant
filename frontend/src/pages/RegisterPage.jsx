@@ -4,15 +4,15 @@ import { toast, Toaster } from "sonner";
 import { Loader2, ChevronDown, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Shared/AuthLayout";
 
-export default function RegisterPage() {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [role, setRole] = useState("Developer");
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+export default function RegisterPage({ setAuthToken, setUserRole, setUserEmail }) {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("Developer");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Password strength calculation
   const getPasswordStrength = (pwd) => {
@@ -56,10 +56,37 @@ export default function RegisterPage() {
         throw new Error(errorData.detail || "Failed to create account");
       }
 
-      toast.success("Account created successfully! Please sign in.");
-      navigate("/login");
+      const data = await res.json().catch(() => ({}));
+
+      // Check if backend returns token upon registration for instant login
+      const token = data.access_token || data.token;
+      const userRoleReturned = data.role || role;
+      const userMailReturned = data.email || email;
+
+      if (token) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("userRole", userRoleReturned);
+        localStorage.setItem("userEmail", userMailReturned);
+
+        if (setAuthToken) setAuthToken(token);
+        if (setUserRole) setUserRole(userRoleReturned);
+        if (setUserEmail) setUserEmail(userMailReturned);
+
+        toast.success("Account created successfully! Welcome to DevAssist.");
+        navigate("/");
+      } else {
+        // Fallback: Agar backend sirf success message deta hai to login page par bhej dein
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userRole", role);
+        if (setUserRole) setUserRole(role);
+        if (setUserEmail) setUserEmail(email);
+
+        toast.success("Account created successfully! Please sign in.");
+        navigate("/login");
+      }
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
