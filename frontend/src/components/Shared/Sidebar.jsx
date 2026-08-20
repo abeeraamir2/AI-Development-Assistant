@@ -11,6 +11,9 @@ import {
   Settings,
   User,
   LogOut,
+  Users2,
+  BrainCircuit,
+  ShieldCheck,
 } from "lucide-react";
 import "../../css/Sidebar.css";
 
@@ -27,42 +30,66 @@ const QA_NAV = [
   { to: "/bug-summarizer", label: "Bug Summarizer", icon: Bug },
 ];
 
-function Sidebar({ userEmail, userRole, onLogout }) {
+const ADMIN_NAV = [
+  { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/admin/team-progress", label: "Team Progress", icon: Users2 },
+  { to: "/admin/ai-insights", label: "AI Insights", icon: BrainCircuit },
+  { to: "/admin/users", label: "Users & Roles", icon: ShieldCheck },
+];
+
+function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
   const isQA = userRole === "QA";
-  const navItems = isQA ? QA_NAV : DEVELOPER_NAV;
-  const ctaTo = isQA ? "/test-generator" : "/analyzer";
-  const ctaLabel = isQA ? "New Test" : "New Analysis";
+  const isAdmin = userRole === "Admin" 
+
+  const navItems = isAdmin ? ADMIN_NAV : isQA ? QA_NAV : DEVELOPER_NAV;
+  const ctaTo = isAdmin ? "#" : isQA ? "/test-generator" : "/analyzer";
+  const ctaLabel = isAdmin ? "New Sprint" : isQA ? "New Test" : "New Analysis";
 
   const displayName = userEmail ? userEmail.split("@")[0] : "Developer";
 
   return (
     <aside className="sidebar">
       <div>
-        {/* BRAND LOGO & BOLD LARGE TITLE */}
+        {/* BRAND LOGO & TITLE */}
         <div className="brandSection">
-        <div className="brandHeader">
+          <div className="brandHeader">
             <div className="logoIconBox">
-            <Sparkles size={22} strokeWidth={2.2} className="logoIcon" />
+              <Sparkles size={22} strokeWidth={2.2} className="logoIcon" />
             </div>
             <div className="authLogoText">
-            <div className="authLogoName">DevAssist</div>
-            <div className="authLogoTagline">AI DEVELOPMENT ASSISTANT</div>
+              <div className="authLogoName">
+                DevAssist {isAdmin && <span className="text-[#4d8bf8] text-sm">Admin</span>}
+              </div>
+              <div className="authLogoTagline">AI DEVELOPMENT ASSISTANT</div>
             </div>
-        </div>
+          </div>
         </div>
 
         {/* CTA BUTTON */}
-        <NavLink to={ctaTo} className="block no-underline">
+        {isAdmin ? (
           <motion.button
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
+            onClick={onNewAction}
             className="newTestBtn"
             type="button"
           >
             <Plus size={16} strokeWidth={2.5} />
             <span>{ctaLabel}</span>
           </motion.button>
-        </NavLink>
+        ) : (
+          <NavLink to={ctaTo} className="block no-underline">
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="newTestBtn"
+              type="button"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>{ctaLabel}</span>
+            </motion.button>
+          </NavLink>
+        )}
 
         {/* WORKSPACE NAVIGATION */}
         <div className="workspaceGroup">
