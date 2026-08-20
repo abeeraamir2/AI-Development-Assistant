@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Shared/AuthLayout";
 
-export default function LoginPage() {
+export default function LoginPage({ setAuthToken, setUserRole, setUserEmail }) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(null);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -21,29 +22,38 @@ export default function LoginPage() {
       setLoading(true);
       const res = await fetch("http://localhost:8000/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // For HttpOnly Cookies
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Invalid login credentials");
+        throw new Error(errorData.detail || "Invalid email or password");
       }
 
       const data = await res.json();
       
-      // Store token if returned (for backward compatibility)
-      if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-      }
-      
+      // Backend response fields check (token, role, email)
+      const token = data.access_token || data.token || "logged_in_token";
+      const role = data.role || data.user?.role || "Developer";
+      const userMail = data.email || data.user?.email || email;
+
+      // 1. Save in localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userEmail", userMail);
+
+      // 2. Update App.jsx State immediately so Router unblocks
+      if (setAuthToken) setAuthToken(token);
+      if (setUserRole) setUserRole(role);
+      if (setUserEmail) setUserEmail(userMail);
+
       toast.success("Welcome back!");
       navigate("/");
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -52,19 +62,19 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <Toaster position="top-right" richColors />
-      
-      {/* Heading */}
+
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
           Welcome back
         </h1>
-        <p className="text-xs text-slate-500 mt-1.5">
+        <p className="text-xs text-slate-500 mt-1">
           Log in to continue analyzing requirements.
         </p>
       </div>
 
-      {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
             Email
@@ -75,7 +85,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@company.com"
             required
-            className="w-full px-4 py-3 rounded-xl bg-[#edf3ff] border border-transparent focus:border-[#3b82f6] focus:bg-white text-xs font-medium text-slate-800 focus:outline-none transition-all placeholder-slate-400"
+            className="w-full h-11 px-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#4d8bf8] focus:ring-3 focus:ring-[#4d8bf8]/15 focus:outline-none transition-all"
           />
         </div>
 
@@ -83,21 +93,30 @@ export default function LoginPage() {
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
             Password
           </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••••••"
-            required
-            className="w-full px-4 py-3 rounded-xl bg-[#edf3ff] border border-transparent focus:border-[#3b82f6] focus:bg-white text-xs font-medium text-slate-800 focus:outline-none transition-all placeholder-slate-400"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              required
+              className="w-full h-11 px-3.5 pr-10 rounded-xl bg-slate-50/80 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#4d8bf8] focus:ring-3 focus:ring-[#4d8bf8]/15 focus:outline-none transition-all"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer"
+            >
+              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
         </div>
 
-        {/* Submit CTA */}
+        {/* Action Button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-2 py-3 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] active:scale-[0.99] text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+          className="w-full mt-2 h-11 rounded-xl bg-[#4d8bf8] hover:bg-[#3b76e8] active:scale-[0.99] text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
         >
           {loading ? (
             <Loader2 size={16} className="animate-spin" />
@@ -107,12 +126,12 @@ export default function LoginPage() {
         </button>
       </form>
 
-      {/* Switch to Register */}
+      {/* Switch Link */}
       <div className="mt-8 text-center text-xs text-slate-500">
         Don't have an account?{" "}
         <Link
           to="/register"
-          className="text-[#3b82f6] font-semibold hover:underline"
+          className="text-[#4d8bf8] font-bold hover:underline"
         >
           Sign up
         </Link>

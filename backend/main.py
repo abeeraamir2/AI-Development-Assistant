@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from routes.analyzer_overview_routes import router as analyzer_overview_router
 from routes.project_routes import router as project_router
 from routes.analyzer_routes import router as upload_router
@@ -31,7 +30,7 @@ def hello():
 
 
 app.include_router(analyzer_overview_router)
-app.include_router(project_router)   # FIX: was imported but never included
+app.include_router(project_router)
 app.include_router(upload_router)
 app.include_router(auth_router)
 app.include_router(test_router)
