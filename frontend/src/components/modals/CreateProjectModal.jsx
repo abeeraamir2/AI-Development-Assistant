@@ -3,7 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }) {
+export default function CreateProjectModal({
+  isOpen,
+  onClose,
+  onProjectCreated,
+  authToken,
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("private");
@@ -16,6 +21,17 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
       return;
     }
 
+    // Resolve token from prop or local storage fallback
+    const token =
+      authToken ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken");
+
+    if (!token) {
+      toast.error("Authentication token missing. Please log in again.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -23,6 +39,7 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
         body: JSON.stringify({
@@ -68,7 +85,7 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
             className="fixed inset-0 bg-black/50 dark:bg-black/75 backdrop-blur-xs"
           />
 
-          {/* Modal Card with dynamic theme variables */}
+          {/* Modal Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
