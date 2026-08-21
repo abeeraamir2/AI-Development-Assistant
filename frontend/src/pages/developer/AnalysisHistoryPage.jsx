@@ -1,5 +1,5 @@
-// src/pages/developer/AnalysisHistoryPage.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { toast, Toaster } from "sonner";
 import HistoryKPICards from "../../components/Analysis-history/HistoryKPICards";
 import HistoryFilters from "../../components/Analysis-history/HistoryFilters";
 import HistoryList from "../../components/Analysis-history/HistoryList";
@@ -67,6 +67,7 @@ export default function AnalysisHistoryPage({ authToken }) {
   const [selectedId, setSelectedId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState("All Projects");
@@ -128,6 +129,32 @@ export default function AnalysisHistoryPage({ authToken }) {
     fetchDetail();
   }, [selectedId, getToken]);
 
+  const handleDeleteAnalysis = async (id, title) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/history/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to delete analysis.");
+      }
+      toast.success(`Analysis "${title || 'Requirement'}" deleted successfully.`);
+      setRawItems((prev) => {
+        const updated = prev.filter((item) => item.id !== id);
+        if (selectedId === id) {
+          setSelectedId(updated.length > 0 ? updated[0].id : null);
+        }
+        return updated;
+      });
+    } catch (err) {
+      toast.error(err.message || "Failed to delete analysis.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const filteredItems = useMemo(() => {
     return rawItems.filter((item) => {
       const matchSearch =
@@ -159,6 +186,8 @@ export default function AnalysisHistoryPage({ authToken }) {
 
   return (
     <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+      <Toaster position="top-right" richColors />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-medium mb-1">
@@ -204,6 +233,8 @@ export default function AnalysisHistoryPage({ authToken }) {
                 items={filteredItems}
                 selectedId={selectedListItem?.id}
                 onSelectItem={(item) => setSelectedId(item.id)}
+                onDelete={handleDeleteAnalysis}
+                deletingId={deletingId}
                 totalCount={rawItems.length}
               />
             </div>
@@ -214,6 +245,8 @@ export default function AnalysisHistoryPage({ authToken }) {
                 item={drawerItem}
                 detailLoading={detailLoading}
                 onClose={() => setSelectedId(null)}
+                onDelete={handleDeleteAnalysis}
+                isDeleting={deletingId === drawerItem?.id}
               />
             </div>
           </div>

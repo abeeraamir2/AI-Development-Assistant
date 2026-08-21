@@ -1,11 +1,12 @@
-// src/components/history/HistoryList.jsx
 import React from "react";
-import { FileText, Cpu, AlertCircle } from "lucide-react";
+import { FileText, Cpu, AlertCircle, Trash2, Loader2 } from "lucide-react";
 
 export default function HistoryList({
   items = [],
   selectedId,
   onSelectItem,
+  onDelete,
+  deletingId,
   totalCount,
 }) {
   return (
@@ -13,11 +14,12 @@ export default function HistoryList({
       <div className="space-y-2.5">
         {items.map((item) => {
           const isSelected = item.id === selectedId;
+          const isDeleting = deletingId === item.id;
           return (
             <div
               key={item.id}
               onClick={() => onSelectItem(item)}
-              className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+              className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer group ${
                 isSelected
                   ? "border-[var(--accent)] bg-[var(--bg-surface)] shadow-md ring-1 ring-[var(--accent)]/30"
                   : "border-[var(--border-color)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/50"
@@ -61,26 +63,43 @@ export default function HistoryList({
                 </span>
               </div>
 
-              {/* Right: Status badge */}
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                    item.status === "Completed"
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                  }`}
-                >
+              {/* Right: Status badge & Actions */}
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      item.status === "Completed" ? "bg-emerald-400" : "bg-amber-400"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      item.status === "Completed"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                     }`}
-                  />
-                  {item.status}
-                </span>
-                {item.similarityWarning && (
-                  <span className="text-[10px] text-amber-400/90 font-medium flex items-center gap-1">
-                    <AlertCircle size={11} /> {item.similarityWarning}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        item.status === "Completed" ? "bg-emerald-400" : "bg-amber-400"
+                      }`}
+                    />
+                    {item.status}
                   </span>
+                  {item.similarityWarning && (
+                    <span className="text-[10px] text-amber-400/90 font-medium flex items-center gap-1">
+                      <AlertCircle size={11} /> {item.similarityWarning}
+                    </span>
+                  )}
+                </div>
+
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(item.id, item.title);
+                    }}
+                    disabled={isDeleting}
+                    title="Delete Analysis"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeleting ? <Loader2 size={14} className="animate-spin text-rose-500" /> : <Trash2 size={14} />}
+                  </button>
                 )}
               </div>
             </div>

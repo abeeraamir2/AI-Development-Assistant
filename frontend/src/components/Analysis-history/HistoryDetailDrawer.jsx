@@ -1,4 +1,3 @@
-// src/components/history/HistoryDetailDrawer.jsx
 import React from "react";
 import {
   X,
@@ -8,6 +7,8 @@ import {
   ListChecks,
   Code2,
   FileCode,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,7 +26,7 @@ function buildSectionDefs(item) {
   ];
 }
 
-export default function HistoryDetailDrawer({ item, detailLoading, onClose }) {
+export default function HistoryDetailDrawer({ item, detailLoading, onClose, onDelete, isDeleting }) {
   const navigate = useNavigate();
 
   if (!item) return null;
@@ -53,16 +54,25 @@ export default function HistoryDetailDrawer({ item, detailLoading, onClose }) {
           >
             {item.status}
           </span>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-[var(--text-muted)] font-medium">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-[var(--text-muted)] font-medium mr-1">
               {item.timeAgo || ""}
             </span>
             <button
               type="button"
-              onClick={onClose}
-              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors cursor-pointer"
+              onClick={() => onDelete?.(item.id, item.title)}
+              disabled={isDeleting}
+              title="Delete this analysis"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <X size={16} />
+              {isDeleting ? <Loader2 size={15} className="animate-spin text-rose-500" /> : <Trash2 size={15} />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors cursor-pointer"
+            >
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -141,12 +151,21 @@ export default function HistoryDetailDrawer({ item, detailLoading, onClose }) {
         </div>
       </div>
 
-      {/* Open Full Analysis CTA */}
-      <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-surface)]">
+      {/* Bottom Actions CTA */}
+      <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-surface)] flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onDelete?.(item.id, item.title)}
+          disabled={isDeleting}
+          title="Delete this analysis"
+          className="p-2.5 rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-500/10 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+        >
+          {isDeleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+        </button>
         <button
           type="button"
           onClick={handleOpenFull}
-          className="w-full py-2.5 px-4 rounded-xl bg-[var(--accent)] hover:opacity-90 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+          className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--accent)] hover:opacity-90 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
         >
           <span>Open Full Analysis</span>
           <ExternalLink size={14} />

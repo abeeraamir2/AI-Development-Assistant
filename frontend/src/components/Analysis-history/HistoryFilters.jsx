@@ -9,7 +9,7 @@ export default function HistoryFilters({
   setSelectedProject,
   selectedStatus,
   setSelectedStatus,
-  projectOptions = ["All Projects", "Project Alpha", "E-Commerce Platform", "Task Manager"],
+  projectOptions = ["All Projects"],
 }) {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-3">
