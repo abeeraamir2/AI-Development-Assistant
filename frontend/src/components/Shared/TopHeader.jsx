@@ -1,77 +1,43 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useLocation } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 
 const ROUTE_LABELS = {
   "/": "Overview",
-  "/overview": "Overview",
-  "/test-generator": "Test Generator",
-  "/test-history": "Test History",
-  "/bug-summarizer": "Bug Summarizer",
   "/analyzer": "Analyzer",
   "/results": "Results",
   "/history": "History",
+  "/test-generator": "Test Generator",
+  "/bug-summarizer": "Bug Summarizer",
+  "/admin/users": "Users",
+  "/admin/roles": "Roles & Permissions",
+  "/admin/team-progress": "Team Progress",
+  "/admin/ai-insights": "AI Insights",
   "/settings": "Settings",
 };
 
-export default function TopHeader({ theme: propTheme, toggleTheme: propToggleTheme }) {
+export default function TopHeader({ theme, toggleTheme }) {
   const location = useLocation();
-  const currentPath = location.pathname;
-  const pageTitle = ROUTE_LABELS[currentPath] || "Overview";
-
-  // Internal state fallback if theme/toggleTheme are not passed from parent
-  const [internalTheme, setInternalTheme] = useState(() => {
-    return localStorage.getItem("theme") || "dark";
-  });
-
-  const currentTheme = propTheme || internalTheme;
-
-  // Sync the 'dark' class on <html> whenever the theme changes
-  useEffect(() => {
-    const root = document.documentElement;
-    if (currentTheme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    localStorage.setItem("theme", currentTheme);
-  }, [currentTheme]);
-
-  const handleToggle = () => {
-    if (propToggleTheme) {
-      propToggleTheme();
-    } else {
-      const nextTheme = currentTheme === "dark" ? "light" : "dark";
-      setInternalTheme(nextTheme);
-    }
-  };
+  const currentTitle = ROUTE_LABELS[location.pathname] || "Workspace";
 
   return (
-    <header className="flex h-14 w-full items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-primary)] px-8 transition-colors">
-      {/* Left Section: Dynamic Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-        <span>Workspace</span>
+    <header className="h-14 border-b border-[var(--border-color,#e2e8f0)] bg-[var(--bg-surface,#ffffff)] px-6 flex items-center justify-between shrink-0 transition-colors">
+      {/* Dynamic Breadcrumbs */}
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-zinc-500">
+        <span className="hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">Workspace</span>
         <span>/</span>
-        <span className="font-semibold text-[var(--text-primary)]">
-          {pageTitle}
-        </span>
+        <span className="font-semibold text-slate-800 dark:text-zinc-200">{currentTitle}</span>
       </div>
 
-      {/* Right Section: Theme Toggle Button */}
-      <div className="flex items-center">
-        <button
-          onClick={handleToggle}
-          type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-xs"
-          title={currentTheme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
-        >
-          {currentTheme === "dark" ? (
-            <Sun size={16} className="text-amber-400" />
-          ) : (
-            <Moon size={16} className="text-zinc-600" />
-          )}
-        </button>
-      </div>
+      {/* Theme Toggle */}
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="p-2 rounded-xl border border-[var(--border-color,#e2e8f0)] bg-[var(--bg-subtle,#f8fafc)] text-slate-600 dark:text-zinc-300 hover:border-[#4d8bf8] transition-all cursor-pointer"
+        title="Toggle Theme"
+      >
+        {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+      </button>
     </header>
   );
 }

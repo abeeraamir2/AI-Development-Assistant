@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutGrid,
@@ -14,7 +14,9 @@ import {
   Users2,
   BrainCircuit,
   ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
+import { isAdminRole, isQARole } from "../../utils/roleUtils";
 import "../../css/Sidebar.css";
 
 const DEVELOPER_NAV = [
@@ -34,82 +36,91 @@ const ADMIN_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
   { to: "/admin/team-progress", label: "Team Progress", icon: Users2 },
   { to: "/admin/ai-insights", label: "AI Insights", icon: BrainCircuit },
-  { to: "/admin/users", label: "Users & Roles", icon: ShieldCheck },
+  { to: "/admin/users", label: "Users", icon: ShieldCheck },
+  { to: "/admin/roles", label: "Roles & Permissions", icon: ShieldAlert },
 ];
 
 function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
-  const isQA = userRole === "QA";
-  const isAdmin = userRole === "Admin" 
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isQA = isQARole(userRole);
+  const isAdmin = isAdminRole(userRole);
 
   const navItems = isAdmin ? ADMIN_NAV : isQA ? QA_NAV : DEVELOPER_NAV;
-  const ctaTo = isAdmin ? "#" : isQA ? "/test-generator" : "/analyzer";
+  const ctaTo = isAdmin ? null : isQA ? "/test-generator" : "/analyzer";
   const ctaLabel = isAdmin ? "New Sprint" : isQA ? "New Test" : "New Analysis";
 
-  const displayName = userEmail ? userEmail.split("@")[0] : "Developer";
+  const displayName =
+    localStorage.getItem("userName") ||
+    (userEmail ? userEmail.split("@")[0] : isQA ? "QA Engineer" : isAdmin ? "Admin" : "Developer");
+
+  const checkIsActive = (to, end) => {
+    if (end || to === "/") {
+      return location.pathname === to;
+    }
+    return location.pathname.startsWith(to);
+  };
+
+  const handleCtaClick = () => {
+    if (isAdmin) {
+      if (onNewAction) onNewAction();
+    } else if (ctaTo) {
+      navigate(ctaTo);
+    }
+  };
 
   return (
     <aside className="sidebar">
       <div>
         {/* BRAND LOGO & TITLE */}
-        <div className="brandSection">
+        <div
+          className="brandSection cursor-pointer"
+          onClick={() => navigate("/")}
+        >
           <div className="brandHeader">
             <div className="logoIconBox">
               <Sparkles size={22} strokeWidth={2.2} className="logoIcon" />
             </div>
             <div className="authLogoText">
-              <div className="authLogoName">
-                DevAssist {isAdmin && <span className="text-[#4d8bf8] text-sm">Admin</span>}
-              </div>
+              <div className="authLogoName">DevAssist</div>
               <div className="authLogoTagline">AI DEVELOPMENT ASSISTANT</div>
             </div>
           </div>
         </div>
 
         {/* CTA BUTTON */}
-        {isAdmin ? (
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onNewAction}
-            className="newTestBtn"
-            type="button"
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>{ctaLabel}</span>
-          </motion.button>
-        ) : (
-          <NavLink to={ctaTo} className="block no-underline">
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              className="newTestBtn"
-              type="button"
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              <span>{ctaLabel}</span>
-            </motion.button>
-          </NavLink>
-        )}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleCtaClick}
+          className="newTestBtn w-full"
+          type="button"
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          <span>{ctaLabel}</span>
+        </motion.button>
 
         {/* WORKSPACE NAVIGATION */}
         <div className="workspaceGroup">
           <span className="sectionLabel">Workspace</span>
           <nav>
             <ul className="navList">
-              {navItems.map(({ to, label, icon: Icon, end }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    end={end}
-                    className={({ isActive }) =>
-                      isActive ? "navItemActive" : "navItem"
-                    }
-                  >
-                    <Icon size={16} strokeWidth={2} />
-                    <span>{label}</span>
-                  </NavLink>
-                </li>
-              ))}
+              {navItems.map(({ to, label, icon: Icon, end }) => {
+                const isActive = checkIsActive(to, end);
+                return (
+                  <li key={to}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(to)}
+                      className={isActive ? "navItemActive" : "navItem"}
+                    >
+                      <Icon size={16} strokeWidth={2} />
+                      <span>{label}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
@@ -117,15 +128,18 @@ function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
 
       {/* FOOTER SECTION */}
       <div className="sidebarFooter">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            isActive ? "navItemActive" : "navItem"
+        <button
+          type="button"
+          onClick={() => navigate("/settings")}
+          className={
+            location.pathname === "/settings"
+              ? "navItemActive"
+              : "navItem"
           }
         >
           <Settings size={16} />
           <span>Settings</span>
-        </NavLink>
+        </button>
 
         <div className="navItem flex items-center justify-between w-full">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -151,4 +165,4 @@ function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
   );
 }
 
-export default Sidebar;
+export default Sidebar; 
