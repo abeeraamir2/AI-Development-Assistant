@@ -3,7 +3,7 @@ import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 export default function AnalysisHealthCard({ metrics }) {
-  const successRate = metrics?.success_rate || 92;
+  const successRate = metrics?.success_rate ?? 0;
   const gaugeData = [
     { name: "Completed", value: successRate, color: "#34d399" },
     { name: "Remaining", value: 100 - successRate, color: "var(--border-color)" },
@@ -47,15 +47,15 @@ export default function AnalysisHealthCard({ metrics }) {
       <div className="flex justify-around items-center pt-3 border-t border-[var(--border-color)] text-xs text-center mt-2">
         <div>
           <p className="text-[10px] text-[var(--text-muted)] font-bold">Total</p>
-          <p className="font-extrabold text-sm">{metrics?.requirements_analyzed || 18}</p>
+          <p className="font-extrabold text-sm">{metrics?.requirements_analyzed ?? 0}</p>
         </div>
         <div>
           <p className="text-[10px] text-emerald-400 font-bold">Completed</p>
-          <p className="font-extrabold text-sm text-emerald-400">{metrics?.completed_analyses || 15}</p>
+          <p className="font-extrabold text-sm text-emerald-400">{metrics?.completed_analyses ?? 0}</p>
         </div>
         <div>
           <p className="text-[10px] text-amber-400 font-bold">Review</p>
-          <p className="font-extrabold text-sm text-amber-400">{metrics?.needs_attention || 3}</p>
+          <p className="font-extrabold text-sm text-amber-400">{metrics?.needs_attention ?? 0}</p>
         </div>
       </div>
     </div>

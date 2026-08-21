@@ -31,28 +31,48 @@ export default function RecentAnalysisTable({ analyses = [] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {analyses.map((row) => (
-              <tr key={row.id} className="hover:bg-[var(--bg-primary)] transition-colors">
-                <td className="py-3.5 px-3 font-semibold flex items-center gap-2">
-                  <FileText size={15} className="text-[var(--text-muted)]" />
-                  <span>{row.requirement}</span>
-                </td>
-                <td className="py-3.5 px-3 text-[var(--text-secondary)]">{row.project}</td>
-                <td className="py-3.5 px-3 text-[var(--text-muted)]">{row.time}</td>
-                <td className="py-3.5 px-3 text-right">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                      row.status === "Completed"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${row.status === "Completed" ? "bg-emerald-400" : "bg-amber-400"}`} />
-                    {row.status}
-                  </span>
+            {!analyses || analyses.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center">
+                  <div className="flex flex-col items-center justify-center gap-1.5 text-[var(--text-muted)]">
+                    <FileText size={22} className="opacity-40" />
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">
+                      No analyses done yet
+                    </p>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      Requirements analyzed for this project will appear here.
+                    </p>
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              analyses.map((row) => (
+                <tr key={row.id} className="hover:bg-[var(--bg-primary)] transition-colors">
+                  <td className="py-3.5 px-3 font-semibold flex items-center gap-2">
+                    <FileText size={15} className="text-[var(--text-muted)]" />
+                    <span>{row.requirement}</span>
+                  </td>
+                  <td className="py-3.5 px-3 text-[var(--text-secondary)]">{row.project}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)]">{row.time}</td>
+                  <td className="py-3.5 px-3 text-right">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        row.status === "Completed"
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          row.status === "Completed" ? "bg-emerald-400" : "bg-amber-400"
+                        }`}
+                      />
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

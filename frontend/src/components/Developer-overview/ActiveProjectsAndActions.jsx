@@ -1,6 +1,6 @@
-// src/components/developer-overview/ActiveProjectsAndActions.jsx
+// src/components/Developer-overview/ActiveProjectsAndActions.jsx
 import React from "react";
-import { Plus, UploadCloud, History } from "lucide-react";
+import { Plus, UploadCloud, History, FolderKanban } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ActiveProjectsAndActions({ projects = [] }) {
@@ -9,28 +9,42 @@ export default function ActiveProjectsAndActions({ projects = [] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Your Projects Activity */}
-      <div className="lg:col-span-7 p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
+      <div className="lg:col-span-7 p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4 flex flex-col justify-between">
         <h2 className="font-bold text-base tracking-wide">Your Projects Activity</h2>
 
-        <div className="space-y-4 pt-1">
-          {projects.map((proj, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold">
-                <span>{proj.name}</span>
-                <span className="text-[var(--text-muted)]">{proj.reqs} Reqs</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-[var(--bg-primary)] overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${proj.percent || 50}%`,
-                    backgroundColor: proj.color || "var(--accent)",
-                  }}
-                />
-              </div>
+        {!projects || projects.length === 0 ? (
+          <div className="py-8 px-4 flex flex-col items-center justify-center border border-dashed border-[var(--border-color)] rounded-xl gap-2 text-center my-auto">
+            <div className="p-2.5 rounded-full bg-[var(--bg-primary)] text-[var(--text-muted)]">
+              <FolderKanban size={20} className="opacity-60" />
             </div>
-          ))}
-        </div>
+            <p className="text-xs font-semibold text-[var(--text-primary)]">
+              No project activity yet
+            </p>
+            <p className="text-[11px] text-[var(--text-muted)] max-w-xs">
+              Project requirement breakdowns and analytics will display here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 pt-1">
+            {projects.map((proj, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span>{proj.name}</span>
+                  <span className="text-[var(--text-muted)]">{proj.reqs} Reqs</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-[var(--bg-primary)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${proj.percent || 50}%`,
+                      backgroundColor: proj.color || "var(--accent)",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions Panel */}
