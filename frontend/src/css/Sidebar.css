@@ -127,6 +127,7 @@
     background: transparent;
     border: none;
     text-align: left;
+    width: 100%;
 }
 
 .navItem:hover {
@@ -145,6 +146,10 @@
     font-weight: 600;
     font-size: 13px;
     text-decoration: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
 }
 
 .sidebarFooter {
