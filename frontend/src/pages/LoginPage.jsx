@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Shared/AuthLayout";
+import { consumeAuthToastMessage } from "../utils/handleAuthError";
 
 export default function LoginPage({ setAuthToken, setUserRole, setUserEmail }) {
   const navigate = useNavigate();
@@ -10,6 +11,13 @@ export default function LoginPage({ setAuthToken, setUserRole, setUserEmail }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const message = consumeAuthToastMessage();
+    if (message) {
+      toast.error(message);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,23 +42,25 @@ export default function LoginPage({ setAuthToken, setUserRole, setUserEmail }) {
 
       const data = await res.json();
       
-      // Backend response fields check (token, role, email)
+      // Backend response fields check (token, role, email, name)
       const token = data.access_token || data.token || "logged_in_token";
       const role = data.role || data.user?.role || "Developer";
       const userMail = data.email || data.user?.email || email;
+      const userName = data.name || data.user?.name || userMail.split("@")[0];
 
       // 1. Save in localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("authToken", token);
       localStorage.setItem("userRole", role);
       localStorage.setItem("userEmail", userMail);
+      localStorage.setItem("userName", userName);
 
       // 2. Update App.jsx State immediately so Router unblocks
       if (setAuthToken) setAuthToken(token);
       if (setUserRole) setUserRole(role);
       if (setUserEmail) setUserEmail(userMail);
 
-      toast.success("Welcome back!");
+      toast.success(`Welcome back, ${userName}!`);
       navigate("/");
     } catch (err) {
       toast.error(err.message || "Login failed");
