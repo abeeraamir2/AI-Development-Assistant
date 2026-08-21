@@ -1,86 +1,192 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminControlsHeader from "../../components/Admin-overview/AdminControlsHeader";
 import AdminKPICards from "../../components/Admin-overview/AdminKPICards";
 import BurndownChartCard from "../../components/Admin-overview/BurndownChartCard";
 import TeamOverviewTable from "../../components/Admin-overview/TeamOverviewTable";
 import AISprintIntelligencePanel from "../../components/Admin-overview/AISprintIntelligencePanel";
+import CreateProjectModal from "../../components/modals/CreateProjectModal";
+import EditProjectModal from "../../components/modals/EditProjectModal";
+import DeleteProjectModal from "../../components/modals/DeleteProjectModal";
 import { toast, Toaster } from "sonner";
 
-const BURNDOWN_DATA = [
-    { day: "Mon", ideal: 50, actual: 50 },
-    { day: "Tue", ideal: 43, actual: 47 },
-    { day: "Wed", ideal: 36, actual: 42 },
-    { day: "Thu", ideal: 29, actual: 38 },
-    { day: "Fri", ideal: 22, actual: 30 },
-    { day: "Mon", ideal: 15, actual: 24 },
-    { day: "Tue", ideal: 8, actual: 18 },
-    { day: "Today", ideal: 0, actual: 14 },
-];
+export default function AdminDashboard({ authToken, userRole, userEmail, onAddSprint }) {
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [teamData, setTeamData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
-    const TEAM_MEMBERS = [
-    {
-        id: "1",
-        name: "Sarah J.",
-        role: "Frontend",
-        points: "12/15",
-        progress: 80,
-        status: "Active",
-        statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-        barColor: "bg-[#4d8bf8]",
-    },
-    {
-        id: "2",
-        name: "David M.",
-        role: "Backend",
-        points: "8/20",
-        progress: 40,
-        status: "Blocked",
-        statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-        barColor: "bg-amber-400",
-    },
-    ];
+  const [projectToEdit, setProjectToEdit] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    export default function AdminDashboard({ onAddSprint }) {
-    const [projects] = useState([
-        { id: "1", name: "Project Alpha", color: "#10b981" },
-        { id: "2", name: "E-Commerce Platform", color: "#3b82f6" },
-    ]);
-    const [selectedProject, setSelectedProject] = useState(projects[0]);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-    const [sprints] = useState([
-        { id: "24", name: "Sprint 24 (Current)" },
-        { id: "23", name: "Sprint 23" },
-    ]);
-    const [selectedSprint, setSelectedSprint] = useState(sprints[0]);
+  const getToken = () =>
+    authToken ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken");
 
-    return (
-        <div className="p-6 md:p-8 min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
-        <Toaster position="top-right" richColors />
+  const handleProjectCreated = (newProj) => {
+    setProjects((prev) => [newProj, ...prev]);
+    setSelectedProject(newProj);
+  };
 
-        {/* Top Header & Controls */}
-        <AdminControlsHeader
-            projects={projects}
-            selectedProject={selectedProject}
-            onSelectProject={setSelectedProject}
-            sprints={sprints}
-            selectedSprint={selectedSprint}
-            onSelectSprint={setSelectedSprint}
-            onAddSprint={onAddSprint || (() => toast.info("Create Sprint modal opening..."))}
-        />
-
-        {/* KPI Cards */}
-        <AdminKPICards metrics={{ velocity: 42, completion: 68, stories_done: 18, total_stories: 24, time_remaining: "4d" }} />
-
-        {/* 2-Column Main Workspace */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-8 space-y-6">
-            <BurndownChartCard data={BURNDOWN_DATA} />
-            <TeamOverviewTable members={TEAM_MEMBERS} />
-            </div>
-            <div className="lg:col-span-4">
-            <AISprintIntelligencePanel onApplyRecommendation={() => toast.success("DEV-442 reassigned to Sarah J.")} />
-            </div>
-        </div>
-        </div>
+  const handleProjectUpdated = (updatedProj) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProj.id ? updatedProj : p))
     );
+    if ((selectedProject?.id || selectedProject?._id) === updatedProj.id) {
+      setSelectedProject(updatedProj);
+    }
+  };
+
+  const handleProjectDeleted = (deletedId) => {
+    setProjects((prev) => {
+      const remaining = prev.filter((p) => (p.id || p._id) !== deletedId);
+      if ((selectedProject?.id || selectedProject?._id) === deletedId) {
+        setSelectedProject(remaining.length > 0 ? remaining[0] : null);
+      }
+      return remaining;
+    });
+  };
+
+  // Fetch all projects for Admin
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch("http://localhost:8000/projects", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setProjects(data);
+        if (data.length > 0) {
+          setSelectedProject((prev) => {
+            if (!prev) return data[0];
+            const found = data.find((p) => p.id === (prev.id || prev._id) || p.name === prev.name);
+            return found || data[0];
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProjects();
+  }, [authToken]);
+
+  // Fetch Team Overview for the active project
+  const selectedProjId = selectedProject?.id || selectedProject?._id;
+
+  useEffect(() => {
+    const fetchTeamOverview = async () => {
+      setLoading(true);
+      try {
+        const token = getToken();
+        const url = selectedProjId
+          ? `http://localhost:8000/admin/team-overview?project_id=${selectedProjId}`
+          : "http://localhost:8000/admin/team-overview";
+
+        const res = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (!res.ok) throw new Error("Failed to load team overview data.");
+
+        const data = await res.json();
+        setTeamData(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamOverview();
+  }, [authToken, selectedProjId]);
+
+  const [sprints] = useState([
+    { id: "24", name: "Sprint 24 (Current)" },
+    { id: "23", name: "Sprint 23" },
+  ]);
+  const [selectedSprint, setSelectedSprint] = useState(sprints[0]);
+
+  return (
+    <div className="p-6 md:p-8 min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+      <Toaster position="top-right" richColors />
+
+      {/* Top Header & Controls */}
+      <AdminControlsHeader
+        projects={projects}
+        selectedProject={selectedProject}
+        onSelectProject={setSelectedProject}
+        onAddProject={() => setIsCreateProjectOpen(true)}
+        onEditProject={(proj) => {
+          setProjectToEdit(proj);
+          setIsEditModalOpen(true);
+        }}
+        onDeleteProject={(proj) => {
+          setProjectToDelete(proj);
+          setIsDeleteModalOpen(true);
+        }}
+        sprints={sprints}
+        selectedSprint={selectedSprint}
+        onSelectSprint={setSelectedSprint}
+        onAddSprint={onAddSprint || (() => toast.info("Create Sprint modal opening..."))}
+      />
+
+      {/* KPI Cards */}
+      <AdminKPICards metrics={teamData?.metrics} />
+
+      {/* 2-Column Main Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-8 space-y-6">
+          <BurndownChartCard data={teamData?.burndown_data || []} />
+          <TeamOverviewTable
+            members={teamData?.team_members || []}
+            projectName={teamData?.project_name || selectedProject?.name}
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <AISprintIntelligencePanel
+            insights={teamData?.ai_insights}
+            onApplyRecommendation={() => toast.success("Recommendation applied to project sprint")}
+          />
+        </div>
+      </div>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onProjectCreated={handleProjectCreated}
+        authToken={authToken}
+      />
+
+      {/* Edit Project Modal */}
+      <EditProjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setProjectToEdit(null);
+        }}
+        project={projectToEdit}
+        onProjectUpdated={handleProjectUpdated}
+        authToken={authToken}
+      />
+
+      {/* Delete Project Modal */}
+      <DeleteProjectModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setProjectToDelete(null);
+        }}
+        project={projectToDelete}
+        onProjectDeleted={handleProjectDeleted}
+        authToken={authToken}
+      />
+    </div>
+  );
 }
