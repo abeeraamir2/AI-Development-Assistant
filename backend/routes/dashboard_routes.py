@@ -1,16 +1,22 @@
 from fastapi import APIRouter, Depends
-from database.database import test_suites_collection
-from services.auth_service import get_current_user
+from database.database import test_suites_collection, users_collection
+from services.auth_service import require_role
 
 router = APIRouter()
 
 
 @router.get("/dashboard-stats")
-async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
+async def get_dashboard_stats(current_user: dict = Depends(require_role(["Admin", "QA"]))):
     user_email = current_user["email"]
+    user_id = current_user.get("user_id") or current_user.get("id")
+    if not user_id:
+        user_doc = await users_collection.find_one({"email": user_email})
+        if user_doc:
+            user_id = str(user_doc["_id"])
 
-    # 1. Fetch user test suites from MongoDB
-    cursor = test_suites_collection.find({"user_email": user_email}).sort("created_at", -1)
+    # 1. Fetch user test suites from MongoDB using foreign key or email fallback
+    query = {"$or": [{"user_id": str(user_id)}, {"user_email": user_email}]} if user_id else {"user_email": user_email}
+    cursor = test_suites_collection.find(query).sort("created_at", -1)
     suites = await cursor.to_list(length=100)
 
     total_tests = 0
