@@ -7,6 +7,8 @@ from routes.auth_routes import router as auth_router
 from routes.test_generator_routes import router as test_router
 from routes.dashboard_routes import router as dashboard_router
 from routes.bug_summarizer_routes import router as bug_router
+from routes.user_routes import router as user_router
+from routes.role_routes import router as role_router
 
 app = FastAPI()
 
@@ -36,3 +38,5 @@ app.include_router(auth_router)
 app.include_router(test_router)
 app.include_router(dashboard_router)
 app.include_router(bug_router)
+app.include_router(user_router)
+app.include_router(role_router)
