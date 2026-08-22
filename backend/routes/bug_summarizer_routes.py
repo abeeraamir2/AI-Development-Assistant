@@ -1,12 +1,11 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Body
 import google.generativeai as genai
 from dotenv import load_dotenv
-
 from database.database import bug_reports_collection
-from services.auth_service import get_current_user
+from services.auth_service import require_role
 
 load_dotenv()
 
@@ -17,9 +16,10 @@ router = APIRouter()
 
 
 @router.post("/analyze-bug")
+@router.post("/bugs")
 async def analyze_bug(
     payload: dict = Body(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_role(["Admin", "QA Engineer"])),
 ):
     user_email = current_user.get("email")
     raw_log = payload.get("raw_log", "").strip()
@@ -85,7 +85,7 @@ Raw Log Input:
             "user_email": user_email,
             "raw_log": raw_log,
             "analysis": analysis_result,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
         }
         await bug_reports_collection.insert_one(db_record)
 
