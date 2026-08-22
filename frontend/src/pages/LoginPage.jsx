@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Shared/AuthLayout";
-import { consumeAuthToastMessage } from "../utils/handleAuthError";
+import { consumeAuthToastMessage } from "../utils/authUtils";
 
 export default function LoginPage({ setAuthToken, setUserRole, setUserEmail }) {
   const navigate = useNavigate();
