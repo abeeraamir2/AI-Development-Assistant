@@ -1,20 +1,34 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from database.database import projects_collection, create_project
-from services.auth_service import get_current_user,require_role
-from models.project_models import ProjectCreateRequest
+from typing import Optional
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, status
+from database.database import (
+    projects_collection,
+    teams_collection,
+    analysis_collection,
+    users_collection,
+    add_team_member,
+    create_project,
+    update_project,
+    delete_project,
+)
+from services.auth_service import require_role
+from models.project_models import ProjectCreateRequest, ProjectUpdateRequest
 
 router = APIRouter()
 
-@router.get("/projects")
-async def list_projects(current_user: dict = Depends(get_current_user)):
 
-    cursor = projects_collection.find({
-        "$or": [
-            {"owner_email": current_user["email"]},
-            {"visibility": "public"},
-        ]
-    })
+@router.get("/projects")
+async def list_projects(current_user: dict = Depends(require_role(["Admin", "Developer", "QA"]))):
+    # Admins can view all projects; Developers/QAs view their owned + public projects
+    if current_user.get("role") == "Admin":
+        cursor = projects_collection.find({})
+    else:
+        cursor = projects_collection.find({
+            "$or": [
+                {"owner_email": current_user["email"]},
+                {"visibility": "public"},
+            ]
+        })
     results = []
     async for doc in cursor:
         results.append({
@@ -30,9 +44,8 @@ async def list_projects(current_user: dict = Depends(get_current_user)):
 @router.post("/projects")
 async def create_new_project(
     payload: ProjectCreateRequest,
-    current_user: dict = Depends(require_role(["Developer"])),
+    current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
-
     project_id = await create_project(
         payload.name,
         current_user["email"],
@@ -46,3 +59,273 @@ async def create_new_project(
         "visibility": payload.visibility,
         "owner_email": current_user["email"],
     }
+
+
+@router.put("/projects/{project_id}")
+async def update_project_endpoint(
+    project_id: str,
+    payload: ProjectUpdateRequest,
+    current_user: dict = Depends(require_role(["Admin", "Developer"])),
+):
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_role = current_user.get("role", "")
+
+    updates = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
+    success, error, updated_doc = await update_project(project_id, updates, user_email, user_role)
+    if not success:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if error == "Project not found"
+            else status.HTTP_403_FORBIDDEN
+        )
+        raise HTTPException(status_code=status_code, detail=error)
+
+    return {
+        "id": str(updated_doc["_id"]),
+        "name": updated_doc["name"],
+        "description": updated_doc.get("description", ""),
+        "visibility": updated_doc.get("visibility", "private"),
+        "owner_email": updated_doc.get("owner_email"),
+    }
+
+
+@router.get("/admin/team-overview")
+async def get_admin_team_overview(
+    project_id: Optional[str] = None,
+    current_user: dict = Depends(require_role(["Admin", "Product Manager"])),
+):
+    project = None
+    if project_id:
+        try:
+            project = await projects_collection.find_one({"_id": ObjectId(project_id)})
+        except Exception:
+            project = None
+
+    if not project:
+        # Fallback: get the first project if available
+        project = await projects_collection.find_one({})
+
+    if not project:
+        return {
+            "project_id": None,
+            "project_name": "No Projects Created",
+            "visibility": "public",
+            "owner_email": None,
+            "team_members": [],
+            "metrics": {
+                "velocity": 0,
+                "completion": 0,
+                "stories_done": 0,
+                "total_stories": 0,
+                "time_remaining": "N/A"
+            },
+            "burndown_data": [],
+            "ai_insights": {
+                "risk_title": "No Project Data",
+                "risk_desc": "No projects or team activity found yet. Create a project to view team collaboration.",
+                "prediction_pct": 0,
+                "prediction_desc": "Create a project and analyze requirements to see sprint forecasts.",
+                "recommendation": "Assign developers and QA engineers to the project to begin collaboration."
+            }
+        }
+
+    proj_id_str = str(project["_id"])
+    owner_email = project.get("owner_email")
+    project_name = project.get("name", "Unnamed Project")
+    visibility = project.get("visibility", "public")
+
+    # Ensure the owner is present in the teams collection for this project
+    if owner_email:
+        owner_team_entry = await teams_collection.find_one({
+            "project_id": proj_id_str,
+            "user_email": owner_email
+        })
+        if not owner_team_entry:
+            await add_team_member(
+                project_id=proj_id_str,
+                user_email=owner_email,
+                role_in_project="Lead"
+            )
+
+    # Fetch all members for this project from the dedicated `teams` collection
+    team_cursor = teams_collection.find({"project_id": proj_id_str})
+    team_docs = await team_cursor.to_list(length=200)
+
+    # Also backfill any users who analyzed requirements for this project into `teams`
+    analysis_users = await analysis_collection.distinct("user_email", {"project_id": proj_id_str})
+    existing_team_emails = {doc.get("user_email") for doc in team_docs if doc.get("user_email")}
+
+    for anal_email in analysis_users:
+        if anal_email and anal_email not in existing_team_emails:
+            await add_team_member(
+                project_id=proj_id_str,
+                user_email=anal_email,
+                role_in_project="Contributor"
+            )
+            existing_team_emails.add(anal_email)
+
+    # Refresh team documents from teams collection
+    team_cursor = teams_collection.find({"project_id": proj_id_str})
+    team_docs = await team_cursor.to_list(length=200)
+
+    team_members = []
+    total_analyses_all = 0
+    completed_analyses_all = 0
+
+    for idx, member in enumerate(team_docs):
+        email = member.get("user_email")
+        if not email:
+            continue
+
+        user_doc = await users_collection.find_one({"email": email})
+        is_owner = (member.get("role_in_project") == "Owner" or email == owner_email)
+
+        name = (user_doc.get("name") if user_doc else None) or email.split("@")[0].replace(".", " ").replace("_", " ").title()
+        user_system_role = (user_doc.get("role") if user_doc else None) or "Developer"
+
+        if is_owner:
+            display_role = f"Project Owner ({user_system_role})" if user_system_role != "Admin" else "Project Owner"
+        else:
+            role_in_proj = member.get("role_in_project", "Contributor")
+            display_role = f"{role_in_proj} ({user_system_role})"
+
+        # Query activity on this project
+        user_analyses_count = await analysis_collection.count_documents({
+            "project_id": proj_id_str,
+            "user_email": email
+        })
+        user_completed_count = await analysis_collection.count_documents({
+            "project_id": proj_id_str,
+            "user_email": email,
+            "status": {"$in": ["COMPLETED", "Completed"]}
+        })
+        user_review_count = await analysis_collection.count_documents({
+            "project_id": proj_id_str,
+            "user_email": email,
+            "status": {"$in": ["Needs Review", "NEEDS_REVIEW"]}
+        })
+
+        total_analyses_all += user_analyses_count
+        completed_analyses_all += user_completed_count
+
+        points_done = user_completed_count
+        points_assigned = user_analyses_count if user_analyses_count > 0 else (5 if is_owner else 3)
+        progress = round((points_done / points_assigned) * 100) if points_assigned > 0 else 100
+
+        if user_review_count > 0:
+            status_text = "Needs Review"
+            status_color = "text-amber-400 bg-amber-500/10 border-amber-500/20"
+            bar_color = "bg-amber-400"
+        elif user_analyses_count > 0:
+            status_text = "Active"
+            status_color = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+            bar_color = "bg-[#4d8bf8]"
+        elif is_owner:
+            status_text = "Owner (Active)"
+            status_color = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+            bar_color = "bg-emerald-400"
+        else:
+            status_text = "Joined"
+            status_color = "text-blue-400 bg-blue-500/10 border-blue-500/20"
+            bar_color = "bg-[#4d8bf8]"
+
+        team_members.append({
+            "id": str(member.get("_id") or idx + 1),
+            "user_id": member.get("user_id"),
+            "name": name,
+            "email": email,
+            "role": display_role,
+            "role_in_project": member.get("role_in_project", "Contributor"),
+            "system_role": user_system_role,
+            "is_owner": is_owner,
+            "points": f"{points_done}/{points_assigned}",
+            "progress": progress,
+            "analyses_count": user_analyses_count,
+            "completed_count": user_completed_count,
+            "status": status_text,
+            "statusColor": status_color,
+            "barColor": bar_color,
+            "joined_at": member.get("joined_at"),
+            "last_active": member.get("last_active"),
+        })
+
+    # Sort owner first, then by activity
+    team_members.sort(key=lambda m: (not m["is_owner"], -m["analyses_count"]))
+
+    # Overall project metrics
+    total_team_members = len(team_members)
+    completion_rate = round((completed_analyses_all / total_analyses_all) * 100) if total_analyses_all > 0 else (100 if total_team_members > 0 else 0)
+    velocity = max(total_analyses_all * 8, total_team_members * 12) if total_analyses_all > 0 else (total_team_members * 10)
+
+    # Burndown 7-day projection
+    burndown_data = [
+        {"day": "Mon", "ideal": 50, "actual": max(50 - int(completed_analyses_all * 0.2), 0)},
+        {"day": "Tue", "ideal": 43, "actual": max(45 - int(completed_analyses_all * 0.4), 0)},
+        {"day": "Wed", "ideal": 36, "actual": max(38 - int(completed_analyses_all * 0.6), 0)},
+        {"day": "Thu", "ideal": 29, "actual": max(30 - int(completed_analyses_all * 0.8), 0)},
+        {"day": "Fri", "ideal": 22, "actual": max(24 - completed_analyses_all, 0)},
+        {"day": "Mon", "ideal": 15, "actual": max(18 - completed_analyses_all, 0)},
+        {"day": "Tue", "ideal": 8, "actual": max(10 - completed_analyses_all, 0)},
+        {"day": "Today", "ideal": 0, "actual": max(total_analyses_all - completed_analyses_all, 0)},
+    ]
+
+    # AI Intelligence Insights
+    if total_team_members > 1:
+        member_names = ", ".join([m["name"] for m in team_members[:3]])
+        risk_desc = f"{total_team_members} members ({member_names}) are registered in the project team and actively collaborating on '{project_name}'."
+        recommendation = f"Cross-functional team collaboration is active for '{project_name}'. Team velocity is healthy."
+    elif total_team_members == 1:
+        risk_desc = f"1 team member ({team_members[0]['name']}) is currently active on '{project_name}'."
+        recommendation = f"Public project '{project_name}' is open for other developers and QA engineers to join and contribute."
+    else:
+        risk_desc = "No contributors active on this project yet."
+        recommendation = "Add requirements or assign team members to begin sprint tracking."
+
+    return {
+        "project_id": proj_id_str,
+        "project_name": project_name,
+        "visibility": visibility,
+        "owner_email": owner_email,
+        "team_members": team_members,
+        "metrics": {
+            "velocity": velocity,
+            "completion": completion_rate,
+            "stories_done": completed_analyses_all,
+            "total_stories": max(total_analyses_all, total_team_members * 3),
+            "time_remaining": "4d"
+        },
+        "burndown_data": burndown_data,
+        "ai_insights": {
+            "risk_title": "Team Collaboration Status",
+            "risk_desc": risk_desc,
+            "prediction_pct": completion_rate,
+            "prediction_desc": f"Expected sprint progress for '{project_name}' based on live team output.",
+            "recommendation": recommendation
+        }
+    }
+
+
+@router.delete("/projects/{project_id}")
+async def delete_project_endpoint(
+    project_id: str,
+    current_user: dict = Depends(require_role(["Admin", "Developer"])),
+):
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_role = current_user.get("role", "")
+
+    success, error = await delete_project(project_id, user_email, user_role)
+    if not success:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if error == "Project not found"
+            else status.HTTP_403_FORBIDDEN
+        )
+        raise HTTPException(status_code=status_code, detail=error)
+
+    # Clean up project team memberships
+    try:
+        await teams_collection.delete_many({"project_id": project_id})
+    except Exception:
+        pass
+
+    return {"message": "Project deleted successfully", "id": project_id}
