@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
-from services.auth_service import get_current_user
+from services.auth_service import require_role
 from database.database import analysis_collection, projects_collection
 
 router = APIRouter()
@@ -20,7 +20,7 @@ def to_aware_utc(dt):
 @router.get("/developer-overview-stats")
 async def get_developer_overview_stats(
     project_id: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
     user_email = current_user["email"]
     now = datetime.now(timezone.utc)
