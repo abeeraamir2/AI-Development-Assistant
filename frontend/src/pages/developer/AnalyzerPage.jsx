@@ -1,6 +1,6 @@
 // src/pages/developer/AnalyzerPage.jsx
-import React, { useState } from "react";
-import { Sparkles, Folder } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sparkles, Folder, ChevronDown, Layers } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -11,12 +11,18 @@ import RelatedRequirementsCard from "../../components/Requirement-analyzer/Relat
 import RecentAnalysisList from "../../components/Requirement-analyzer/RecentAnalysisList";
 import AnalyzingRequirementScreen from "../../components/Requirement-analyzer/AnalyzingRequirementScreen";
 
-const DEFAULT_PROJECT = { _id: null, name: "Project Alpha" };
-
-export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJECT }) {
+export default function AnalyzerPage({ authToken, selectedProject }) {
   const [inputText, setInputText] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(selectedProject?._id || selectedProject?.id || "");
+  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+  const [relatedReqs, setRelatedReqs] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [similarReq, setSimilarReq] = useState(null);
+
   const [selectedScopes, setSelectedScopes] = useState([
     "summary",
     "criteria",
@@ -28,11 +34,132 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
 
   const navigate = useNavigate();
 
+  const getToken = () =>
+    authToken ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken");
+
+  // 1. Fetch live projects list from database
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch("http://localhost:8000/projects", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const projectList = Array.isArray(data) ? data : [];
+        setProjects(projectList);
+        if (projectList.length > 0 && !selectedProjectId) {
+          setSelectedProjectId(projectList[0].id || projectList[0]._id);
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+      }
+    };
+
+    fetchProjects();
+  }, [authToken]);
+
+  // 2. Fetch live Recent Analyses from database
+  const fetchRecentAnalyses = async () => {
+    setRecentLoading(true);
+    try {
+      const token = getToken();
+      const res = await fetch("http://localhost:8000/history?limit=5", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setRecentAnalyses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load recent analyses:", err);
+    } finally {
+      setRecentLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentAnalyses();
+  }, [authToken]);
+
+  // 3. Fetch live Related Requirements from database for selected project
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setRelatedReqs([]);
+      return;
+    }
+
+    const fetchRelatedReqs = async () => {
+      setRelatedLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(
+          `http://localhost:8000/projects/${selectedProjectId}/related-requirements`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setRelatedReqs(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load related requirements:", err);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelatedReqs();
+  }, [selectedProjectId, authToken]);
+
+  // 4. Check for similar requirements in database when input text changes (debounced)
+  useEffect(() => {
+    if (!inputText.trim() || !selectedProjectId) {
+      setSimilarReq(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const token = getToken();
+        const res = await fetch("http://localhost:8000/check-similarity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            project_id: selectedProjectId,
+            text: inputText.trim(),
+          }),
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.similar_detected && data.similar_req) {
+          setSimilarReq(data.similar_req);
+        } else {
+          setSimilarReq(null);
+        }
+      } catch (err) {
+        console.error("Similarity check error:", err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [inputText, selectedProjectId, authToken]);
+
   const toggleScope = (scopeId) => {
     setSelectedScopes((prev) =>
       prev.includes(scopeId) ? prev.filter((id) => id !== scopeId) : [...prev, scopeId]
     );
   };
+
+  const selectedProjectObj = projects.find(
+    (p) => (p.id || p._id) === selectedProjectId
+  );
 
   const handleAnalyze = async () => {
     if (!inputText.trim() && !uploadedFile) {
@@ -40,8 +167,8 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
       return;
     }
 
-    if (!selectedProject?._id) {
-      toast.error("Please select a project before analyzing.");
+    if (!selectedProjectId) {
+      toast.error("Please select a target project from the dropdown first.");
       return;
     }
 
@@ -50,21 +177,24 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
 
     if (uploadedFile) formData.append("file", uploadedFile);
     if (inputText.trim()) formData.append("text_input", inputText.trim());
-    formData.append("scopes", JSON.stringify(selectedScopes));
-    formData.append("project", selectedProject.name);
-    formData.append("project_id", selectedProject._id);
+    formData.append("scopes", selectedScopes.join(","));
+    formData.append("project", selectedProjectObj?.name || "Workspace Project");
+    formData.append("project_id", selectedProjectId);
 
     const startTime = Date.now();
 
     try {
-      const token = authToken || localStorage.getItem("token") || localStorage.getItem("authToken");
+      const token = getToken();
       const res = await fetch("http://localhost:8000/upload", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to analyze requirement.");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to analyze requirement.");
+      }
 
       const resultData = await res.json();
 
@@ -99,16 +229,13 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Requirement Analyzer</h1>
         <p className="text-xs text-[var(--text-secondary)] mt-1">
-          Transform your software requirements into structured, actionable development insights.
+          Transform software requirements into structured, actionable development insights and architecture plans.
         </p>
       </div>
 
-      {/* Top Similarity Warning Banner */}
+      {/* Top Similarity Warning Banner (displays ONLY when similar requirement is detected in DB) */}
       <SimilarityWarningBanner
-        similarReq={{
-          title: "User Auth Flow",
-          timeAgo: "2 days ago",
-        }}
+        similarReq={similarReq}
         onView={() => navigate("/history")}
       />
 
@@ -116,12 +243,37 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-6">
           <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-5">
-            <div className="flex items-center justify-between text-xs pb-3 border-b border-[var(--border-color)]">
-              <div className="flex items-center gap-2 text-[var(--text-secondary)] font-medium">
-                <Folder size={15} className="text-[var(--accent)]" />
-                <span>
-                  Project: <strong className="text-[var(--text-primary)]">{selectedProject?.name}</strong>
-                </span>
+            {/* Project Selection Dropdown */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
+                <Folder size={16} className="text-[var(--accent)]" />
+                <span>Target Project:</span>
+              </div>
+
+              <div className="relative min-w-[220px]">
+                <select
+                  value={selectedProjectId || ""}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full appearance-none px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-hidden transition-all cursor-pointer pr-8 shadow-xs"
+                >
+                  {projects.length === 0 && (
+                    <option value="" disabled>
+                      Loading projects...
+                    </option>
+                  )}
+                  {projects.map((proj) => {
+                    const pId = proj.id || proj._id;
+                    return (
+                      <option key={pId} value={pId}>
+                        {proj.name}
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
+                />
               </div>
             </div>
 
@@ -145,35 +297,19 @@ export default function AnalyzerPage({ authToken, selectedProject = DEFAULT_PROJ
           </div>
         </div>
 
-        {/* Right Column Context Cards */}
+        {/* Right Column Context Cards (Live data from DB) */}
         <div className="lg:col-span-4">
           <RelatedRequirementsCard
-            relatedReqs={[
-              { id: "REQ-003", matchPercent: 92, title: "Legacy Password Reset Flow" },
-              { id: "REQ-012", matchPercent: 78, title: "User Profile Security Settings" },
-            ]}
+            relatedReqs={relatedReqs}
+            loading={relatedLoading}
           />
         </div>
       </div>
 
-      {/* Bottom Recent Analyses History */}
+      {/* Bottom Recent Analyses History (Live data from DB) */}
       <RecentAnalysisList
-        recentList={[
-          {
-            id: "1",
-            title: "User Authentication Flow V2",
-            project: "Project Alpha",
-            time: "2 hours ago",
-            status: "Completed",
-          },
-          {
-            id: "2",
-            title: "Payment Gateway Integration",
-            project: "Project Beta",
-            time: "yesterday",
-            status: "Needs Review",
-          },
-        ]}
+        recentList={recentAnalyses}
+        loading={recentLoading}
       />
     </div>
   );
