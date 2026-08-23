@@ -34,6 +34,7 @@ export default function DeveloperKPICards({
   const dropdownRef = useRef(null);
 
   const currentEmail = userEmail || localStorage.getItem("userEmail") || "";
+  const currentUserId = localStorage.getItem("userId") || localStorage.getItem("id") || "";
   const currentRole = userRole || localStorage.getItem("userRole") || "";
   const isUserAdmin = isAdminRole(currentRole);
 
@@ -48,7 +49,11 @@ export default function DeveloperKPICards({
       ) || projects[0]
     : null;
 
-  const canManageCurrent = currentProject && (isUserAdmin || (currentProject.owner_email === currentEmail));
+  const canManageCurrent =
+    currentProject &&
+    (isUserAdmin ||
+      (currentUserId && currentProject.owner_id && currentProject.owner_id === currentUserId) ||
+      (currentEmail && currentProject.owner_email === currentEmail));
 
   // Close dropdown on click outside
   useEffect(() => {
