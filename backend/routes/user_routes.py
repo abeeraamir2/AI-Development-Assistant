@@ -13,9 +13,9 @@ router = APIRouter()
 
 
 @router.get("/users")
-async def list_users(current_user: dict = Depends(require_role(["Admin"]))):
+async def list_users(current_user: dict = Depends(require_role(["Admin", "Developer", "QA"]))):
     """
-    Admin-only. Returns all registered users with formatted fields.
+    Returns all registered users with formatted fields for team assignment and user management.
     """
     return await get_all_users()
 
