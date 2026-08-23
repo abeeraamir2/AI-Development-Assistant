@@ -18,6 +18,8 @@ bug_reports_collection = db["bug_reports"]
 requirement_embeddings_collection = db["requirement_embeddings"]
 roles_collection = db["roles"]
 teams_collection = db["teams"]
+work_items_collection = db["work_items"]
+counters_collection = db["counters"]
 
 
 async def add_team_member(
@@ -66,15 +68,36 @@ async def get_project_team(project_id: str):
 
 async def create_project(
     name,
-    owner_email,
+    owner_id,
     description="",
     visibility="private"
 ):
+    # Resolve owner user from users_collection
+    resolved_owner_id = str(owner_id) if owner_id else None
+    resolved_owner_email = None
+
+    if owner_id:
+        if "@" in str(owner_id):
+            user_doc = await users_collection.find_one({"email": str(owner_id).strip().lower()})
+            if user_doc:
+                resolved_owner_id = str(user_doc["_id"])
+                resolved_owner_email = user_doc["email"]
+            else:
+                resolved_owner_email = str(owner_id).strip().lower()
+        else:
+            try:
+                user_doc = await users_collection.find_one({"_id": ObjectId(str(owner_id))})
+                if user_doc:
+                    resolved_owner_id = str(user_doc["_id"])
+                    resolved_owner_email = user_doc.get("email")
+            except Exception:
+                resolved_owner_id = str(owner_id)
+
     document = {
         "name": name,
         "description": description,
         "visibility": visibility,
-        "owner_email": owner_email,
+        "owner_id": resolved_owner_id,
         "created_at": datetime.now(timezone.utc)
     }
 
@@ -82,11 +105,12 @@ async def create_project(
     project_id_str = str(result.inserted_id)
 
     # Register project creator as Owner in teams collection
-    await add_team_member(
-        project_id=project_id_str,
-        user_email=owner_email,
-        role_in_project="Owner"
-    )
+    if resolved_owner_email or resolved_owner_id:
+        await add_team_member(
+            project_id=project_id_str,
+            user_email=resolved_owner_email or "",
+            role_in_project="Owner"
+        )
 
     return project_id_str
 
@@ -739,7 +763,13 @@ async def delete_role_admin(role_id: str):
     return True, None
 
 
-async def update_project(project_id: str, updates: dict, user_email: str, user_role: str = ""):
+async def update_project(
+    project_id: str,
+    updates: dict,
+    user_id: str = "",
+    user_email: str = "",
+    user_role: str = ""
+):
     try:
         obj_id = ObjectId(project_id)
     except Exception:
@@ -749,8 +779,12 @@ async def update_project(project_id: str, updates: dict, user_email: str, user_r
     if not project:
         return False, "Project not found", None
 
-    if user_role != "Admin" and project.get("owner_email") != user_email:
-        return False, "You do not have permission to edit this project", None
+    if user_role != "Admin":
+        proj_owner_id = str(project.get("owner_id", ""))
+        proj_owner_email = project.get("owner_email", "")
+        is_owner = (user_id and proj_owner_id == str(user_id)) or (user_email and proj_owner_email == user_email)
+        if not is_owner:
+            return False, "You do not have permission to edit this project", None
 
     clean_updates = {k: v for k, v in updates.items() if v is not None}
     if clean_updates:
@@ -763,7 +797,12 @@ async def update_project(project_id: str, updates: dict, user_email: str, user_r
     return True, None, updated_project
 
 
-async def delete_project(project_id: str, user_email: str, user_role: str = ""):
+async def delete_project(
+    project_id: str,
+    user_id: str = "",
+    user_email: str = "",
+    user_role: str = ""
+):
     try:
         obj_id = ObjectId(project_id)
     except Exception:
@@ -773,8 +812,12 @@ async def delete_project(project_id: str, user_email: str, user_role: str = ""):
     if not project:
         return False, "Project not found"
 
-    if user_role != "Admin" and project.get("owner_email") != user_email:
-        return False, "You do not have permission to delete this project"
+    if user_role != "Admin":
+        proj_owner_id = str(project.get("owner_id", ""))
+        proj_owner_email = project.get("owner_email", "")
+        is_owner = (user_id and proj_owner_id == str(user_id)) or (user_email and proj_owner_email == user_email)
+        if not is_owner:
+            return False, "You do not have permission to delete this project"
 
     result = await projects_collection.delete_one({"_id": obj_id})
     if result.deleted_count == 0:
@@ -785,6 +828,23 @@ async def delete_project(project_id: str, user_email: str, user_role: str = ""):
     await teams_collection.delete_many({"project_id": project_id})
 
     return True, None
+
+
+async def backfill_project_owner_ids_if_needed():
+    """Ensure any existing project documents have owner_id populated as foreign key reference."""
+    try:
+        legacy_projects = await projects_collection.find({"owner_id": {"$exists": False}}).to_list(length=500)
+        for proj in legacy_projects:
+            owner_email = proj.get("owner_email")
+            if owner_email:
+                user = await users_collection.find_one({"email": owner_email.strip().lower()})
+                if user:
+                    await projects_collection.update_one(
+                        {"_id": proj["_id"]},
+                        {"$set": {"owner_id": str(user["_id"])}, "$unset": {"owner_email": ""}}
+                    )
+    except Exception:
+        pass
 
 
 async def delete_analysis(analysis_id: str, user_email: str, user_role: str = ""):
