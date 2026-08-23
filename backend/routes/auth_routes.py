@@ -29,12 +29,12 @@ async def register(user: UserRegister):
         "created_at": datetime.now(timezone.utc),
         "status": "Active",
     }
-    result = await users_collection.insert_one(new_user)
-    token = create_access_token({"sub": normalized_email, "role": user.role})
+    user_id_str = str(result.inserted_id)
+    token = create_access_token({"sub": normalized_email, "role": user.role, "id": user_id_str, "user_id": user_id_str, "name": derived_name})
 
     return {
         "message": "User registered successfully",
-        "id": str(result.inserted_id),
+        "id": user_id_str,
         "name": derived_name,
         "email": normalized_email,
         "role": user.role,
@@ -57,7 +57,9 @@ async def login(credentials: UserLogin):
             detail="Your account has been deactivated. Please contact an administrator."
         )
 
-    token = create_access_token({"sub": user["email"], "role": user["role"]})
+    user_id_str = str(user["_id"])
+    user_display_name = user.get("name") or user["email"].split("@")[0].replace(".", " ").replace("_", " ").title()
+    token = create_access_token({"sub": user["email"], "role": user["role"], "id": user_id_str, "user_id": user_id_str, "name": user_display_name})
 
     return {
         "access_token": token,
@@ -65,4 +67,5 @@ async def login(credentials: UserLogin):
         "role": user["role"],
         "name": user.get("name") or user["email"].split("@")[0].title(),
         "email": user["email"],
+        "id": user_id_str,
     }
