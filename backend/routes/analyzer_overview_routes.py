@@ -22,15 +22,17 @@ async def get_developer_overview_stats(
     project_id: Optional[str] = None,
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
-    user_email = current_user["email"]
+    user_email = current_user.get("email")
+    user_id = current_user.get("id") or current_user.get("user_id")
     now = datetime.now(timezone.utc)
 
-    project_cursor = projects_collection.find({
-        "$or": [
-            {"owner_email": user_email},
-            {"visibility": "public"},
-        ]
-    })
+    or_clauses = [{"visibility": "public"}]
+    if user_id:
+        or_clauses.append({"owner_id": str(user_id)})
+    if user_email:
+        or_clauses.append({"owner_email": user_email})
+
+    project_cursor = projects_collection.find({"$or": or_clauses})
     all_projects = await project_cursor.to_list(length=200)
     total_projects_count = len(all_projects)
 
