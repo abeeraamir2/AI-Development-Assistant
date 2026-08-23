@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutGrid,
+  CheckSquare,
   FileSearch,
   History,
   Sparkles,
@@ -21,12 +22,14 @@ import "../../css/Sidebar.css";
 
 const DEVELOPER_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/work-items", label: "Work Items", icon: CheckSquare },
   { to: "/analyzer", label: "Analyzer", icon: FileSearch },
   { to: "/history", label: "History", icon: History },
 ];
 
 const QA_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/work-items", label: "Work Items", icon: CheckSquare },
   { to: "/test-generator", label: "Test Generator", icon: Sparkles },
   { to: "/test-history", label: "Test History", icon: History },
   { to: "/bug-summarizer", label: "Bug Summarizer", icon: Bug },
@@ -34,6 +37,7 @@ const QA_NAV = [
 
 const ADMIN_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/work-items", label: "Work Items", icon: CheckSquare },
   { to: "/admin/team-progress", label: "Team Progress", icon: Users2 },
   { to: "/admin/ai-insights", label: "AI Insights", icon: BrainCircuit },
   { to: "/admin/users", label: "Users", icon: ShieldCheck },

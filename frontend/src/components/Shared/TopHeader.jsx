@@ -4,6 +4,8 @@ import { Moon, Sun } from "lucide-react";
 
 const ROUTE_LABELS = {
   "/": "Overview",
+  "/work-items": "Work Items",
+  "/work-items/create": "Create Work Item",
   "/analyzer": "Analyzer",
   "/results": "Results",
   "/history": "History",
@@ -18,7 +20,17 @@ const ROUTE_LABELS = {
 
 export default function TopHeader({ theme, toggleTheme }) {
   const location = useLocation();
-  const currentTitle = ROUTE_LABELS[location.pathname] || "Workspace";
+  const getRouteTitle = (pathname) => {
+    if (ROUTE_LABELS[pathname]) return ROUTE_LABELS[pathname];
+    if (pathname.startsWith("/work-items/") && pathname.endsWith("/edit")) {
+      return "Edit Work Item";
+    }
+    if (pathname.startsWith("/work-items/") && pathname !== "/work-items/create") {
+      return "Work Item Details";
+    }
+    return "Workspace";
+  };
+  const currentTitle = getRouteTitle(location.pathname);
 
   return (
     <header className="h-14 border-b border-[var(--border-color,#e2e8f0)] bg-[var(--bg-surface,#ffffff)] px-6 flex items-center justify-between shrink-0 transition-colors">
