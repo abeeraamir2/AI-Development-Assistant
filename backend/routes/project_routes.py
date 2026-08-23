@@ -23,20 +23,46 @@ async def list_projects(current_user: dict = Depends(require_role(["Admin", "Dev
     if current_user.get("role") == "Admin":
         cursor = projects_collection.find({})
     else:
-        cursor = projects_collection.find({
-            "$or": [
-                {"owner_email": current_user["email"]},
-                {"visibility": "public"},
-            ]
-        })
+        user_id = current_user.get("id") or current_user.get("user_id")
+        user_email = current_user.get("email")
+        or_clauses = [{"visibility": "public"}]
+        if user_id:
+            or_clauses.append({"owner_id": str(user_id)})
+        if user_email:
+            or_clauses.append({"owner_email": user_email})
+        cursor = projects_collection.find({"$or": or_clauses})
+
+    project_docs = await cursor.to_list(length=500)
+
+    # Batch-fetch owner user documents to resolve owner_email/owner_name dynamically
+    owner_ids = [
+        ObjectId(doc["owner_id"])
+        for doc in project_docs
+        if doc.get("owner_id") and ObjectId.is_valid(doc["owner_id"])
+    ]
+    owner_users = {}
+    if owner_ids:
+        user_cursor = users_collection.find({"_id": {"$in": owner_ids}})
+        async for u in user_cursor:
+            owner_users[str(u["_id"])] = u
+
     results = []
-    async for doc in cursor:
+    for doc in project_docs:
+        owner_id_str = str(doc.get("owner_id", ""))
+        owner_doc = owner_users.get(owner_id_str)
+        resolved_owner_email = (
+            owner_doc.get("email")
+            if owner_doc
+            else doc.get("owner_email")
+        )
+
         results.append({
             "id": str(doc["_id"]),
             "name": doc["name"],
             "description": doc.get("description", ""),
             "visibility": doc.get("visibility", "private"),
-            "owner_email": doc.get("owner_email"),
+            "owner_id": owner_id_str,
+            "owner_email": resolved_owner_email,
         })
     return results
 
@@ -46,9 +72,15 @@ async def create_new_project(
     payload: ProjectCreateRequest,
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
+    user_id = current_user.get("id") or current_user.get("user_id")
+    if not user_id and current_user.get("email"):
+        user_doc = await users_collection.find_one({"email": current_user["email"].strip().lower()})
+        if user_doc:
+            user_id = str(user_doc["_id"])
+
     project_id = await create_project(
         payload.name,
-        current_user["email"],
+        user_id or current_user["email"],
         payload.description,
         payload.visibility,
     )
@@ -57,7 +89,8 @@ async def create_new_project(
         "name": payload.name,
         "description": payload.description,
         "visibility": payload.visibility,
-        "owner_email": current_user["email"],
+        "owner_id": str(user_id) if user_id else "",
+        "owner_email": current_user.get("email"),
     }
 
 
@@ -67,11 +100,12 @@ async def update_project_endpoint(
     payload: ProjectUpdateRequest,
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
+    user_id = current_user.get("id") or current_user.get("user_id")
     user_email = current_user.get("email") or current_user.get("user_email")
     user_role = current_user.get("role", "")
 
     updates = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
-    success, error, updated_doc = await update_project(project_id, updates, user_email, user_role)
+    success, error, updated_doc = await update_project(project_id, updates, str(user_id) if user_id else "", user_email, user_role)
     if not success:
         status_code = (
             status.HTTP_404_NOT_FOUND
@@ -80,12 +114,14 @@ async def update_project_endpoint(
         )
         raise HTTPException(status_code=status_code, detail=error)
 
+    owner_id_str = str(updated_doc.get("owner_id", ""))
     return {
         "id": str(updated_doc["_id"]),
         "name": updated_doc["name"],
         "description": updated_doc.get("description", ""),
         "visibility": updated_doc.get("visibility", "private"),
-        "owner_email": updated_doc.get("owner_email"),
+        "owner_id": owner_id_str,
+        "owner_email": updated_doc.get("owner_email") or user_email,
     }
 
 
@@ -130,7 +166,17 @@ async def get_admin_team_overview(
         }
 
     proj_id_str = str(project["_id"])
+    owner_id = project.get("owner_id")
     owner_email = project.get("owner_email")
+
+    if owner_id and not owner_email:
+        try:
+            owner_user = await users_collection.find_one({"_id": ObjectId(str(owner_id))})
+            if owner_user:
+                owner_email = owner_user.get("email")
+        except Exception:
+            pass
+
     project_name = project.get("name", "Unnamed Project")
     visibility = project.get("visibility", "public")
 
@@ -199,54 +245,19 @@ async def get_admin_team_overview(
             "user_email": email,
             "status": {"$in": ["COMPLETED", "Completed"]}
         })
-        user_review_count = await analysis_collection.count_documents({
-            "project_id": proj_id_str,
-            "user_email": email,
-            "status": {"$in": ["Needs Review", "NEEDS_REVIEW"]}
-        })
 
         total_analyses_all += user_analyses_count
         completed_analyses_all += user_completed_count
 
-        points_done = user_completed_count
-        points_assigned = user_analyses_count if user_analyses_count > 0 else (5 if is_owner else 3)
-        progress = round((points_done / points_assigned) * 100) if points_assigned > 0 else 100
-
-        if user_review_count > 0:
-            status_text = "Needs Review"
-            status_color = "text-amber-400 bg-amber-500/10 border-amber-500/20"
-            bar_color = "bg-amber-400"
-        elif user_analyses_count > 0:
-            status_text = "Active"
-            status_color = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-            bar_color = "bg-[#4d8bf8]"
-        elif is_owner:
-            status_text = "Owner (Active)"
-            status_color = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-            bar_color = "bg-emerald-400"
-        else:
-            status_text = "Joined"
-            status_color = "text-blue-400 bg-blue-500/10 border-blue-500/20"
-            bar_color = "bg-[#4d8bf8]"
-
         team_members.append({
-            "id": str(member.get("_id") or idx + 1),
-            "user_id": member.get("user_id"),
+            "id": idx + 1,
             "name": name,
-            "email": email,
             "role": display_role,
-            "role_in_project": member.get("role_in_project", "Contributor"),
-            "system_role": user_system_role,
-            "is_owner": is_owner,
-            "points": f"{points_done}/{points_assigned}",
-            "progress": progress,
+            "avatar": f"https://api.dicebear.com/7.x/avataaars/svg?seed={name.replace(' ', '')}",
+            "email": email,
             "analyses_count": user_analyses_count,
             "completed_count": user_completed_count,
-            "status": status_text,
-            "statusColor": status_color,
-            "barColor": bar_color,
-            "joined_at": member.get("joined_at"),
-            "last_active": member.get("last_active"),
+            "is_owner": is_owner
         })
 
     # Sort owner first, then by activity
@@ -310,10 +321,11 @@ async def delete_project_endpoint(
     project_id: str,
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
+    user_id = current_user.get("id") or current_user.get("user_id")
     user_email = current_user.get("email") or current_user.get("user_email")
     user_role = current_user.get("role", "")
 
-    success, error = await delete_project(project_id, user_email, user_role)
+    success, error = await delete_project(project_id, str(user_id) if user_id else "", user_email, user_role)
     if not success:
         status_code = (
             status.HTTP_404_NOT_FOUND
