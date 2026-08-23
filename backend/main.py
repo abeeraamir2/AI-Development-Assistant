@@ -9,8 +9,17 @@ from routes.dashboard_routes import router as dashboard_router
 from routes.bug_summarizer_routes import router as bug_router
 from routes.user_routes import router as user_router
 from routes.role_routes import router as role_router
+from routes.work_item_routes import router as work_item_router
+from database.database import backfill_project_owner_ids_if_needed
+from services.work_item_service import init_work_items_indexes_and_counter, purge_mock_work_items
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def on_startup():
+    await backfill_project_owner_ids_if_needed()
+    await purge_mock_work_items()
+    await init_work_items_indexes_and_counter()
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,4 +48,5 @@ app.include_router(test_router)
 app.include_router(dashboard_router)
 app.include_router(bug_router)
 app.include_router(user_router)
-app.include_router(role_router)
+app.include_router(role_router)
+app.include_router(work_item_router)

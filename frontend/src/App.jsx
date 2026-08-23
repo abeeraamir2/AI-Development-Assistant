@@ -13,8 +13,12 @@ import AnalysisHistoryPage from "./pages/developer/AnalysisHistoryPage";
 import ResultsPage from "./pages/developer/ResultsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagementPage from "./pages/admin/UserManagementPage";
-import "./App.css";
 import RolesPermissionsPage from "./pages/admin/RolesPermissionPage";
+import WorkItemsPage from "./pages/work-items/WorkItemsPage";
+import CreateWorkItemPage from "./pages/work-items/CreateWorkItemPage";
+import WorkItemDetailsPage from "./pages/work-items/WorkItemDetailsPage";
+import EditWorkItemPage from "./pages/work-items/EditWorkItemPage";
+import "./App.css";
 import { normalizeRole, isAdminRole, isQARole } from "./utils/roleUtils";
 
 function App() {
@@ -163,6 +167,48 @@ function App() {
                   <Routes>
                     {/* Role-based root view */}
                     <Route path="/" element={renderRoleDashboard()} />
+
+                    {/* Shared Work Items Routes */}
+                    <Route
+                      path="/work-items"
+                      element={
+                        <WorkItemsPage
+                          authToken={authToken}
+                          userRole={userRole}
+                          userEmail={userEmail}
+                        />
+                      }
+                    />
+                    <Route
+                      path="/work-items/create"
+                      element={
+                        <CreateWorkItemPage
+                          authToken={authToken}
+                          userRole={userRole}
+                          userEmail={userEmail}
+                        />
+                      }
+                    />
+                    <Route
+                      path="/work-items/:id/edit"
+                      element={
+                        <EditWorkItemPage
+                          authToken={authToken}
+                          userRole={userRole}
+                          userEmail={userEmail}
+                        />
+                      }
+                    />
+                    <Route
+                      path="/work-items/:id"
+                      element={
+                        <WorkItemDetailsPage
+                          authToken={authToken}
+                          userRole={userRole}
+                          userEmail={userEmail}
+                        />
+                      }
+                    />
 
                     {/* Developer Routes */}
                     <Route
