@@ -38,7 +38,7 @@ const QA_NAV = [
 const ADMIN_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
   { to: "/work-items", label: "Work Items", icon: CheckSquare },
-  { to: "/admin/team-progress", label: "Team Progress", icon: Users2 },
+  { to: "/team-progress", label: "Team Progress", icon: Users2 },
   { to: "/admin/ai-insights", label: "AI Insights", icon: BrainCircuit },
   { to: "/admin/users", label: "Users", icon: ShieldCheck },
   { to: "/admin/roles", label: "Roles & Permissions", icon: ShieldAlert },
