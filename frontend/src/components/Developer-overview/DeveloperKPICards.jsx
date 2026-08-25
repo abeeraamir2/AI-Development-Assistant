@@ -11,10 +11,12 @@ import {
   FolderPlus,
   Pencil,
   Trash2,
+  Lock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CreateProjectModal from "../modals/CreateProjectModal";
 import { isAdminRole } from "../../utils/roleUtils";
+import { useProjectAccess } from "../../context/ProjectAccessContext";
 
 export default function DeveloperKPICards({
   authToken,
@@ -32,6 +34,8 @@ export default function DeveloperKPICards({
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const { getProjectAccessStatus } = useProjectAccess();
 
   const currentEmail = userEmail || localStorage.getItem("userEmail") || "";
   const currentUserId = localStorage.getItem("userId") || localStorage.getItem("id") || "";
@@ -123,6 +127,8 @@ export default function DeveloperKPICards({
                         const isOwner = project.owner_email ? project.owner_email === currentEmail : true;
                         const canManage = isUserAdmin || isOwner;
 
+                        const isPrivate = project.visibility && project.visibility.toLowerCase() === "private";
+
                         return (
                           <div
                             key={project.id}
@@ -145,6 +151,9 @@ export default function DeveloperKPICards({
                                 style={{ backgroundColor: project.color || "#10b981" }}
                               />
                               <span className="truncate">{project.name}</span>
+                              {isPrivate && (
+                                <Lock size={11} className="text-amber-500 shrink-0 ml-0.5 opacity-80" />
+                              )}
                             </button>
 
                             <div className="flex items-center gap-1 shrink-0 ml-2">

@@ -14,10 +14,12 @@ import ResultsPage from "./pages/developer/ResultsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagementPage from "./pages/admin/UserManagementPage";
 import RolesPermissionsPage from "./pages/admin/RolesPermissionPage";
+import TeamProgressPage from "./pages/team-progress/TeamProgressPage";
 import WorkItemsPage from "./pages/work-items/WorkItemsPage";
 import CreateWorkItemPage from "./pages/work-items/CreateWorkItemPage";
 import WorkItemDetailsPage from "./pages/work-items/WorkItemDetailsPage";
 import EditWorkItemPage from "./pages/work-items/EditWorkItemPage";
+import { ProjectAccessProvider } from "./context/ProjectAccessContext";
 import "./App.css";
 import { normalizeRole, isAdminRole, isQARole } from "./utils/roleUtils";
 
@@ -150,115 +152,137 @@ function App() {
         <Route
           path="/*"
           element={
-            <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-primary)]">
-              <Sidebar
-                userEmail={userEmail}
-                userRole={userRole}
-                onLogout={handleLogout}
-              />
-
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <TopHeader
-                  theme={theme}
-                  toggleTheme={toggleTheme}
+            <ProjectAccessProvider>
+              <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-primary)]">
+                <Sidebar
+                  userEmail={userEmail}
+                  userRole={userRole}
+                  onLogout={handleLogout}
                 />
 
-                <main className="flex-1 overflow-y-auto">
-                  <Routes>
-                    {/* Role-based root view */}
-                    <Route path="/" element={renderRoleDashboard()} />
+                <div className="flex flex-1 flex-col overflow-hidden">
+                  <TopHeader
+                    theme={theme}
+                    toggleTheme={toggleTheme}
+                  />
 
-                    {/* Shared Work Items Routes */}
-                    <Route
-                      path="/work-items"
-                      element={
-                        <WorkItemsPage
-                          authToken={authToken}
-                          userRole={userRole}
-                          userEmail={userEmail}
-                        />
-                      }
-                    />
-                    <Route
-                      path="/work-items/create"
-                      element={
-                        <CreateWorkItemPage
-                          authToken={authToken}
-                          userRole={userRole}
-                          userEmail={userEmail}
-                        />
-                      }
-                    />
-                    <Route
-                      path="/work-items/:id/edit"
-                      element={
-                        <EditWorkItemPage
-                          authToken={authToken}
-                          userRole={userRole}
-                          userEmail={userEmail}
-                        />
-                      }
-                    />
-                    <Route
-                      path="/work-items/:id"
-                      element={
-                        <WorkItemDetailsPage
-                          authToken={authToken}
-                          userRole={userRole}
-                          userEmail={userEmail}
-                        />
-                      }
-                    />
+                  <main className="flex-1 overflow-y-auto">
+                    <Routes>
+                      {/* Role-based root view */}
+                      <Route path="/" element={renderRoleDashboard()} />
 
-                    {/* Developer Routes */}
-                    <Route
-                      path="/analyzer"
-                      element={
-                        <AnalyzerPage
-                          authToken={authToken}
-                          selectedProject={(() => {
-                            const proj = projects.find((p) => p.id === activeProjectId);
-                            return proj
-                              ? { _id: proj.id, name: proj.name }
-                              : { _id: null, name: "Project Alpha" };
-                          })()}
-                        />
-                      }
-                    />
-                    <Route path="/results" element={<ResultsPage />} />
-                    <Route
-                      path="/history"
-                      element={<AnalysisHistoryPage authToken={authToken} />}
-                    />
+                      {/* Shared Work Items Routes */}
+                      <Route
+                        path="/work-items"
+                        element={
+                          <WorkItemsPage
+                            authToken={authToken}
+                            userRole={userRole}
+                            userEmail={userEmail}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/work-items/create"
+                        element={
+                          <CreateWorkItemPage
+                            authToken={authToken}
+                            userRole={userRole}
+                            userEmail={userEmail}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/work-items/:id/edit"
+                        element={
+                          <EditWorkItemPage
+                            authToken={authToken}
+                            userRole={userRole}
+                            userEmail={userEmail}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/work-items/:id"
+                        element={
+                          <WorkItemDetailsPage
+                            authToken={authToken}
+                            userRole={userRole}
+                            userEmail={userEmail}
+                          />
+                        }
+                      />
 
-                    {/* QA Routes */}
-                    <Route
-                      path="/test-generator"
-                      element={<TestGeneratorPage authToken={authToken} />}
-                    />
-                    <Route
-                      path="/bug-summarizer"
-                      element={<BugSummarizerPage />}
-                    />
+                      {/* Developer Routes */}
+                      <Route
+                        path="/analyzer"
+                        element={
+                          <AnalyzerPage
+                            authToken={authToken}
+                            selectedProject={(() => {
+                              const proj = projects.find((p) => p.id === activeProjectId);
+                              return proj
+                                ? { _id: proj.id, name: proj.name }
+                                : { _id: null, name: "Project Alpha" };
+                            })()}
+                          />
+                        }
+                      />
+                      <Route path="/results" element={<ResultsPage />} />
+                      <Route
+                        path="/history"
+                        element={<AnalysisHistoryPage authToken={authToken} />}
+                      />
 
-                    {/* Admin Routes */}
-                    <Route
-                      path="/admin/users"
-                      element={<UserManagementPage />}
-                    />
+                      {/* QA Routes */}
+                      <Route
+                        path="/test-generator"
+                        element={<TestGeneratorPage authToken={authToken} />}
+                      />
+                      <Route
+                        path="/bug-summarizer"
+                        element={<BugSummarizerPage />}
+                      />
 
-                    <Route
-                      path="/admin/roles"
-                      element={<RolesPermissionsPage />}
-                    />
+                      {/* Admin Routes */}
+                      <Route
+                        path="/team-progress"
+                        element={
+                          isAdminRole(userRole) ? (
+                            <TeamProgressPage
+                              authToken={authToken}
+                              userRole={userRole}
+                              userEmail={userEmail}
+                            />
+                          ) : (
+                            <Navigate to="/" replace />
+                          )
+                        }
+                      />
+
+                      <Route
+                        path="/admin/team-progress"
+                        element={<Navigate to="/team-progress" replace />}
+                      />
+
+                      <Route
+                        path="/admin/users"
+                        element={<UserManagementPage />}
+                      />
+
+                      <Route
+                        path="/admin/roles"
+                        element={<RolesPermissionsPage />}
+                      />
 
 
-                    {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </main>
+                      {/* Fallback */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </main>
+                </div>
               </div>
-            </div>
+            </ProjectAccessProvider>
           }
         />
       ) : (

@@ -20,6 +20,8 @@ roles_collection = db["roles"]
 teams_collection = db["teams"]
 work_items_collection = db["work_items"]
 counters_collection = db["counters"]
+project_join_requests_collection = db["project_join_requests"]
+notifications_collection = db["notifications"]
 
 
 async def add_team_member(
@@ -35,17 +37,17 @@ async def add_team_member(
     # Find user_id from users_collection if not explicitly provided
     resolved_user_id = user_id
     if not resolved_user_id:
-        user_doc = await users_collection.find_one({"email": user_email})
+        user_doc = await users_collection.find_one({"email": user_email.strip().lower()})
         if user_doc:
             resolved_user_id = str(user_doc["_id"])
 
     now = datetime.now(timezone.utc)
     await teams_collection.update_one(
-        {"project_id": str(project_id), "user_email": user_email},
+        {"project_id": str(project_id), "user_email": user_email.strip().lower()},
         {
             "$setOnInsert": {
                 "project_id": str(project_id),
-                "user_email": user_email,
+                "user_email": user_email.strip().lower(),
                 "user_id": resolved_user_id,
                 "role_in_project": role_in_project,
                 "joined_at": now,
@@ -58,12 +60,77 @@ async def add_team_member(
     )
 
 
+async def remove_team_member(
+    project_id: str,
+    user_email: str = None,
+    user_id: str = None
+):
+    """Remove a user from a project team in the teams collection."""
+    if not project_id:
+        return False
+
+    query = {"project_id": str(project_id)}
+    or_clauses = []
+    if user_email:
+        or_clauses.append({"user_email": str(user_email).strip().lower()})
+    if user_id:
+        or_clauses.append({"user_id": str(user_id)})
+    if not or_clauses:
+        return False
+
+    query["$or"] = or_clauses
+    result = await teams_collection.delete_one(query)
+    return result.deleted_count > 0
+
+
+async def is_user_in_project_team(
+    project_id: str,
+    user_email: str = None,
+    user_id: str = None
+) -> bool:
+    """Check whether a user is an active member of a project's team."""
+    if not project_id:
+        return False
+
+    query = {"project_id": str(project_id)}
+    or_clauses = []
+    if user_email:
+        or_clauses.append({"user_email": str(user_email).strip().lower()})
+    if user_id:
+        or_clauses.append({"user_id": str(user_id)})
+    if not or_clauses:
+        return False
+
+    query["$or"] = or_clauses
+    member_doc = await teams_collection.find_one(query)
+    return member_doc is not None
+
+
 async def get_project_team(project_id: str):
     """Retrieve all team members for a given project."""
     if not project_id:
         return []
     cursor = teams_collection.find({"project_id": str(project_id)})
     return await cursor.to_list(length=200)
+
+
+async def init_project_access_indexes():
+    """Ensure indexes on project_join_requests and notifications collections."""
+    try:
+        await project_join_requests_collection.create_index(
+            [("project_id", 1), ("requester_id", 1), ("status", 1)]
+        )
+        await project_join_requests_collection.create_index(
+            [("owner_id", 1), ("status", 1)]
+        )
+        await notifications_collection.create_index(
+            [("recipient_id", 1), ("read", 1), ("created_at", -1)]
+        )
+        await notifications_collection.create_index(
+            [("recipient_email", 1), ("read", 1), ("created_at", -1)]
+        )
+    except Exception as e:
+        print(f"Index initialization notice: {e}")
 
 
 async def create_project(

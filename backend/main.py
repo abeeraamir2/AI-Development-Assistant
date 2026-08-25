@@ -10,7 +10,12 @@ from routes.bug_summarizer_routes import router as bug_router
 from routes.user_routes import router as user_router
 from routes.role_routes import router as role_router
 from routes.work_item_routes import router as work_item_router
-from database.database import backfill_project_owner_ids_if_needed
+from routes.project_access_routes import router as project_access_router
+from routes.notification_routes import router as notification_router
+from database.database import (
+    backfill_project_owner_ids_if_needed,
+    init_project_access_indexes,
+)
 from services.work_item_service import init_work_items_indexes_and_counter, purge_mock_work_items
 
 app = FastAPI()
@@ -20,6 +25,7 @@ async def on_startup():
     await backfill_project_owner_ids_if_needed()
     await purge_mock_work_items()
     await init_work_items_indexes_and_counter()
+    await init_project_access_indexes()
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +48,8 @@ def hello():
 
 app.include_router(analyzer_overview_router)
 app.include_router(project_router)
+app.include_router(project_access_router)
+app.include_router(notification_router)
 app.include_router(upload_router)
 app.include_router(auth_router)
 app.include_router(test_router)

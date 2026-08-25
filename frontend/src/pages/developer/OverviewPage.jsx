@@ -1,21 +1,21 @@
-// src/pages/developer/OverviewPage.jsx
 import React, { useState, useEffect } from "react";
-import { toast, Toaster } from "sonner";
-import { Loader2 } from "lucide-react";
-
 import DeveloperKPICards from "../../components/Developer-overview/DeveloperKPICards";
 import RequirementActivityChart from "../../components/Developer-overview/RequirementActivityChart";
 import AnalysisHealthCard from "../../components/Developer-overview/AnalysisHealthCard";
 import RecentAnalysisTable from "../../components/Developer-overview/RecentAnalysisTable";
 import ActiveProjectsAndActions from "../../components/Developer-overview/ActiveProjectsAndActions";
+import CreateProjectModal from "../../components/modals/CreateProjectModal";
 import EditProjectModal from "../../components/modals/EditProjectModal";
 import DeleteProjectModal from "../../components/modals/DeleteProjectModal";
+import ProjectAccessGate from "../../components/Projects/ProjectAccessGate";
+import { useProjectAccess } from "../../context/ProjectAccessContext";
+import { toast, Toaster } from "sonner";
 
 export default function OverviewPage({ authToken, userRole, userEmail }) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const [projectToEdit, setProjectToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -29,6 +29,12 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
     localStorage.getItem("authToken");
 
   const selectedProjId = selectedProject?.id || selectedProject?._id;
+
+  const {
+    getProjectAccessStatus,
+    checkProjectAccess,
+    fetchAllProjectAccessStatuses,
+  } = useProjectAccess();
 
   // Fetch project list
   useEffect(() => {
@@ -65,6 +71,13 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
     fetchProjects();
   }, [authToken]);
 
+  // Batch query access statuses for all projects
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      fetchAllProjectAccessStatuses(projects);
+    }
+  }, [projects, fetchAllProjectAccessStatuses]);
+
   // Fetch stats for the active project
   useEffect(() => {
     const fetchOverviewStats = async () => {
@@ -79,35 +92,25 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to load developer overview stats.");
+          throw new Error("Failed to fetch dashboard stats.");
         }
 
-        const resData = await response.json();
-        setData(resData);
+        const result = await response.json();
+        setData(result);
       } catch (err) {
-        toast.error(err.message);
-      } finally {
-        setLoading(false);
+        console.error(err);
       }
     };
 
     fetchOverviewStats();
   }, [authToken, selectedProjId]);
 
-  if (loading) {
-    return (
-      <div className="h-64 flex flex-col items-center justify-center gap-2">
-        <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
-        <p className="text-xs font-semibold text-[var(--text-muted)]">
-          Loading developer workspace...
-        </p>
-      </div>
-    );
-  }
-
-  const handleProjectCreated = (newProject) => {
-    setProjects((prev) => [newProject, ...prev]);
-    setSelectedProject(newProject);
+  const handleProjectCreated = (newProj) => {
+    setProjects((prev) => [newProj, ...prev]);
+    setSelectedProject(newProj);
+    if (newProj?.id) {
+      checkProjectAccess(newProj.id);
+    }
   };
 
   const handleProjectUpdated = (updatedProj) => {
@@ -128,6 +131,9 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
       return remaining;
     });
   };
+
+  const accessStatus = getProjectAccessStatus(selectedProject, userEmail, userRole);
+  const isAccessApproved = accessStatus === "APPROVED";
 
   return (
     <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
@@ -153,17 +159,50 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         }}
       />
 
-      {/* Middle Row: Line Chart & Health Donut */}
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-        <RequirementActivityChart data={data?.activity_trend} />
-        <AnalysisHealthCard metrics={data?.metrics} />
-      </div>
+      {/* Access Gate for Private Projects when Not Approved */}
+      {!isAccessApproved ? (
+        <div className="space-y-6">
+          <ProjectAccessGate
+            project={selectedProject}
+            userEmail={userEmail}
+            userRole={userRole}
+            onOpenProject={() => {
+              if (selectedProjId) checkProjectAccess(selectedProjId);
+            }}
+          />
 
-      {/* Recent Analyses Table */}
-      <RecentAnalysisTable analyses={data?.recent_analyses} />
+          {/* Also show all projects so Developer can browse or switch */}
+          <ActiveProjectsAndActions
+            projects={projects}
+            statsProjects={data?.active_projects}
+            selectedProject={selectedProject}
+            onSelectProject={(proj) => setSelectedProject(proj)}
+            userEmail={userEmail}
+            userRole={userRole}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Middle Row: Line Chart & Health Donut */}
+          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+            <RequirementActivityChart data={data?.activity_trend} />
+            <AnalysisHealthCard metrics={data?.metrics} />
+          </div>
 
-      {/* Bottom Row: Active Projects Activity & Quick Actions */}
-      <ActiveProjectsAndActions projects={data?.active_projects} />
+          {/* Recent Analyses Table */}
+          <RecentAnalysisTable analyses={data?.recent_analyses} />
+
+          {/* Bottom Row: Active Projects Activity & Quick Actions */}
+          <ActiveProjectsAndActions
+            projects={projects}
+            statsProjects={data?.active_projects}
+            selectedProject={selectedProject}
+            onSelectProject={(proj) => setSelectedProject(proj)}
+            userEmail={userEmail}
+            userRole={userRole}
+          />
+        </>
+      )}
 
       {/* Edit Project Modal */}
       <EditProjectModal
@@ -174,7 +213,6 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         }}
         project={projectToEdit}
         onProjectUpdated={handleProjectUpdated}
-        authToken={authToken}
       />
 
       {/* Delete Project Modal */}
@@ -186,7 +224,6 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         }}
         project={projectToDelete}
         onProjectDeleted={handleProjectDeleted}
-        authToken={authToken}
       />
     </div>
   );

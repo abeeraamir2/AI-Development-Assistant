@@ -19,19 +19,9 @@ router = APIRouter()
 
 @router.get("/projects")
 async def list_projects(current_user: dict = Depends(require_role(["Admin", "Developer", "QA"]))):
-    # Admins can view all projects; Developers/QAs view their owned + public projects
-    if current_user.get("role") == "Admin":
-        cursor = projects_collection.find({})
-    else:
-        user_id = current_user.get("id") or current_user.get("user_id")
-        user_email = current_user.get("email")
-        or_clauses = [{"visibility": "public"}]
-        if user_id:
-            or_clauses.append({"owner_id": str(user_id)})
-        if user_email:
-            or_clauses.append({"owner_email": user_email})
-        cursor = projects_collection.find({"$or": or_clauses})
-
+    # All authenticated personas can view all projects in the system.
+    # Access gating for private projects is handled dynamically via access-status.
+    cursor = projects_collection.find({})
     project_docs = await cursor.to_list(length=500)
 
     # Batch-fetch owner user documents to resolve owner_email/owner_name dynamically
@@ -55,6 +45,11 @@ async def list_projects(current_user: dict = Depends(require_role(["Admin", "Dev
             if owner_doc
             else doc.get("owner_email")
         )
+        resolved_owner_name = (
+            owner_doc.get("name")
+            if owner_doc
+            else doc.get("owner_name", "Project Owner")
+        )
 
         results.append({
             "id": str(doc["_id"]),
@@ -63,6 +58,7 @@ async def list_projects(current_user: dict = Depends(require_role(["Admin", "Dev
             "visibility": doc.get("visibility", "private"),
             "owner_id": owner_id_str,
             "owner_email": resolved_owner_email,
+            "owner_name": resolved_owner_name,
         })
     return results
 
