@@ -2,29 +2,10 @@
 import React from "react";
 import { FileText, Clock, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { formatRelativeTime } from "../../utils/dateUtils";
 
 export default function RecentAnalysisList({ recentList = [], loading = false }) {
   const navigate = useNavigate();
-
-  const formatTime = (isoString) => {
-    if (!isoString) return "Recently";
-    try {
-      const date = new Date(isoString);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins} min ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-      return date.toLocaleDateString();
-    } catch {
-      return "Recently";
-    }
-  };
 
   return (
     <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
@@ -72,7 +53,7 @@ export default function RecentAnalysisList({ recentList = [], loading = false })
                     {item.title}
                   </p>
                   <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    Analyzed {formatTime(item.created_at || item.time)} • {item.project_name || item.project || "Workspace Project"}
+                    Analyzed {formatRelativeTime(item.created_at || item.time)} • {item.project_name || item.project || "Workspace Project"}
                   </p>
                 </div>
               </div>

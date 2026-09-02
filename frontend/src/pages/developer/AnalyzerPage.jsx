@@ -1,13 +1,12 @@
 // src/pages/developer/AnalyzerPage.jsx
 import React, { useState, useEffect } from "react";
-import { Sparkles, Folder, ChevronDown, Layers } from "lucide-react";
+import { Sparkles, Folder, ChevronDown } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 import RequirementInput from "../../components/Shared/RequirementInput";
 import SimilarityWarningBanner from "../../components/Requirement-analyzer/SimilarityWarningBanner";
 import ScopeSelector from "../../components/Requirement-analyzer/ScopeSelector";
-import RelatedRequirementsCard from "../../components/Requirement-analyzer/RelatedRequirementsCard";
 import RecentAnalysisList from "../../components/Requirement-analyzer/RecentAnalysisList";
 import AnalyzingRequirementScreen from "../../components/Requirement-analyzer/AnalyzingRequirementScreen";
 
@@ -15,12 +14,24 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
   const [inputText, setInputText] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(selectedProject?._id || selectedProject?.id || "");
+  const getInitialProjects = () => {
+    try {
+      const cached = localStorage.getItem("cached_projects");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const initialProjects = getInitialProjects();
+  const [projects, setProjects] = useState(initialProjects);
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    selectedProject?._id ||
+    selectedProject?.id ||
+    (initialProjects.length > 0 ? (initialProjects[0].id || initialProjects[0]._id) : "")
+  );
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [recentLoading, setRecentLoading] = useState(true);
-  const [relatedReqs, setRelatedReqs] = useState([]);
-  const [relatedLoading, setRelatedLoading] = useState(false);
   const [similarReq, setSimilarReq] = useState(null);
 
   const [selectedScopes, setSelectedScopes] = useState([
@@ -51,6 +62,11 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
         const data = await res.json();
         const projectList = Array.isArray(data) ? data : [];
         setProjects(projectList);
+        try {
+          localStorage.setItem("cached_projects", JSON.stringify(projectList));
+        } catch {
+          // ignore quota error
+        }
         if (projectList.length > 0 && !selectedProjectId) {
           setSelectedProjectId(projectList[0].id || projectList[0]._id);
         }
@@ -84,37 +100,7 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
     fetchRecentAnalyses();
   }, [authToken]);
 
-  // 3. Fetch live Related Requirements from database for selected project
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setRelatedReqs([]);
-      return;
-    }
-
-    const fetchRelatedReqs = async () => {
-      setRelatedLoading(true);
-      try {
-        const token = getToken();
-        const res = await fetch(
-          `http://localhost:8000/projects/${selectedProjectId}/related-requirements`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        setRelatedReqs(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Failed to load related requirements:", err);
-      } finally {
-        setRelatedLoading(false);
-      }
-    };
-
-    fetchRelatedReqs();
-  }, [selectedProjectId, authToken]);
-
-  // 4. Check for similar requirements in database when input text changes (debounced)
+  // 3. Check for similar requirements in database when input text changes (debounced)
   useEffect(() => {
     if (!inputText.trim() || !selectedProjectId) {
       setSimilarReq(null);
@@ -132,6 +118,7 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
           },
           body: JSON.stringify({
             project_id: selectedProjectId,
+            input_text: inputText.trim(),
             text: inputText.trim(),
           }),
         });
@@ -146,7 +133,7 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
       } catch (err) {
         console.error("Similarity check error:", err);
       }
-    }, 600);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [inputText, selectedProjectId, authToken]);
@@ -239,70 +226,60 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
         onView={() => navigate("/history")}
       />
 
-      {/* Main Grid: Input Form (Left) & Related Requirements (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-8 space-y-6">
-          <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-5">
-            {/* Project Selection Dropdown */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
-              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
-                <Folder size={16} className="text-[var(--accent)]" />
-                <span>Target Project:</span>
-              </div>
-
-              <div className="relative min-w-[220px]">
-                <select
-                  value={selectedProjectId || ""}
-                  onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="w-full appearance-none px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-hidden transition-all cursor-pointer pr-8 shadow-xs"
-                >
-                  {projects.length === 0 && (
-                    <option value="" disabled>
-                      Loading projects...
-                    </option>
-                  )}
-                  {projects.map((proj) => {
-                    const pId = proj.id || proj._id;
-                    return (
-                      <option key={pId} value={pId}>
-                        {proj.name}
-                      </option>
-                    );
-                  })}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
-                />
-              </div>
+      {/* Main Input Form */}
+      <div className="w-full space-y-6">
+        <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-5">
+          {/* Project Selection Dropdown */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
+              <Folder size={16} className="text-[var(--accent)]" />
+              <span>Target Project:</span>
             </div>
 
-            <RequirementInput
-              inputText={inputText}
-              setInputText={setInputText}
-              uploadedFile={uploadedFile}
-              setUploadedFile={setUploadedFile}
-            />
-
-            <ScopeSelector selectedScopes={selectedScopes} toggleScope={toggleScope} />
-
-            <button
-              type="button"
-              onClick={handleAnalyze}
-              className="w-full py-3 px-4 bg-[var(--accent)] hover:opacity-90 active:scale-[0.99] text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Sparkles size={16} />
-              <span>Analyze with AI</span>
-            </button>
+            <div className="relative min-w-[220px]">
+              <select
+                value={selectedProjectId || ""}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full appearance-none px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-hidden transition-all cursor-pointer pr-8 shadow-xs"
+              >
+                {projects.length === 0 && (
+                  <option value="" disabled>
+                    Loading projects...
+                  </option>
+                )}
+                {projects.map((proj) => {
+                  const pId = proj.id || proj._id;
+                  return (
+                    <option key={pId} value={pId}>
+                      {proj.name}
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown
+                size={14}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Right Column Context Cards (Live data from DB) */}
-        <div className="lg:col-span-4">
-          <RelatedRequirementsCard
-            relatedReqs={relatedReqs}
-            loading={relatedLoading}
+          <RequirementInput
+            inputText={inputText}
+            setInputText={setInputText}
+            uploadedFile={uploadedFile}
+            setUploadedFile={setUploadedFile}
           />
+
+          <ScopeSelector selectedScopes={selectedScopes} toggleScope={toggleScope} />
+
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            className="w-full py-3 px-4 bg-[var(--accent)] hover:opacity-90 active:scale-[0.99] text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Sparkles size={16} />
+            <span>Analyze with AI</span>
+          </button>
         </div>
       </div>
 
