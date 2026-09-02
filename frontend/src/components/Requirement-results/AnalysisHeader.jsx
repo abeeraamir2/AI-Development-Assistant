@@ -1,8 +1,28 @@
 // src/components/requirement-results/AnalysisHeader.jsx
 import React from "react";
-import { CheckCircle2, Layers, Gauge, Link2, Sparkles, RefreshCw, Download, MoreVertical } from "lucide-react";
+import { CheckCircle2, Gauge, Link2, RefreshCw, Download } from "lucide-react";
+import { formatRelativeTime } from "../../utils/dateUtils";
 
 export default function AnalysisHeader({ analysis, onReanalyze, onExport }) {
+  const rawRelatedCount = analysis?.related_count;
+  const relatedCount = typeof rawRelatedCount === "number"
+    ? rawRelatedCount
+    : (analysis?.evidence?.related?.length || 0);
+
+  const relativeTimeStr = formatRelativeTime(
+    analysis?.created_at || analysis?.timestamp || analysis?.analyzed_at
+  );
+  const timeDisplay = relativeTimeStr.toLowerCase() === "just now"
+    ? "Analyzed just now"
+    : `Analyzed ${relativeTimeStr}`;
+
+  const complexity = (analysis?.complexity || "MEDIUM").toUpperCase();
+  const complexityColor = complexity === "HIGH"
+    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+    : complexity === "LOW"
+      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+      : "bg-amber-500/10 text-amber-400 border-amber-500/20";
+
   return (
     <div className="space-y-4">
       {/* Top Title & Actions */}
@@ -12,16 +32,18 @@ export default function AnalysisHeader({ analysis, onReanalyze, onExport }) {
             Requirement Analysis
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-1 flex items-center gap-2">
-            <span className="font-bold text-[var(--text-primary)]">{analysis?.title || "User Password Reset"}</span>
+            <span className="font-bold text-[var(--text-primary)]">
+              {analysis?.title || analysis?.filename || "Requirement Specification"}
+            </span>
             <span>•</span>
-            <span>Project: <strong className="text-[var(--text-primary)]">{analysis?.project || "Project Alpha"}</strong></span>
+            <span>
+              Project: <strong className="text-[var(--text-primary)]">{analysis?.project || analysis?.project_name || "Workspace Project"}</strong>
+            </span>
           </p>
           <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)] mt-1.5 font-mono">
-            <span>🕒 Analyzed just now</span>
+            <span>🕒 {timeDisplay}</span>
             <span>•</span>
-            <span>📄 {analysis?.filename || "req_pass_reset.pdf"}</span>
-            <span>•</span>
-            <span>ID: {analysis?.analysis_id || "ANL-8429"}</span>
+            <span>📄 {analysis?.filename || "requirement_doc.txt"}</span>
           </div>
         </div>
 
@@ -41,12 +63,6 @@ export default function AnalysisHeader({ analysis, onReanalyze, onExport }) {
           >
             <Download size={13} /> Export
           </button>
-          <button
-            type="button"
-            className="p-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] hover:bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-          >
-            <MoreVertical size={15} />
-          </button>
         </div>
       </div>
 
@@ -56,20 +72,12 @@ export default function AnalysisHeader({ analysis, onReanalyze, onExport }) {
           <CheckCircle2 size={12} /> {analysis?.status || "COMPLETED"}
         </span>
 
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-color)] text-[10px] font-bold tracking-wider uppercase">
-          <Layers size={12} /> TYPE: {analysis?.type || "FEATURE"}
-        </span>
-
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold tracking-wider uppercase">
-          <Gauge size={12} /> COMPLEXITY: {analysis?.complexity || "MEDIUM"}
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold tracking-wider uppercase ${complexityColor}`}>
+          <Gauge size={12} /> COMPLEXITY: {complexity}
         </span>
 
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold tracking-wider uppercase">
-          <Link2 size={12} /> {analysis?.related_count || 3} RELATED REQ FOUND
-        </span>
-
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider uppercase">
-          <Sparkles size={12} /> CONFIDENCE: {analysis?.confidence || "HIGH"}
+          <Link2 size={12} /> {relatedCount} {relatedCount === 1 ? "RELATED REQ FOUND" : "RELATED REQS FOUND"}
         </span>
       </div>
     </div>
