@@ -11,7 +11,7 @@ export default function HistoryKPICards({ metrics }) {
           <p className="text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase">
             Total Analyses
           </p>
-          <p className="text-3xl font-extrabold mt-2">{metrics?.total || 18}</p>
+          <p className="text-3xl font-extrabold mt-2">{metrics?.total ?? 0}</p>
         </div>
         <div className="p-2.5 rounded-lg bg-[var(--bg-primary)] text-[var(--text-muted)]">
           <FolderGit2 size={24} />
@@ -22,12 +22,12 @@ export default function HistoryKPICards({ metrics }) {
       <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] flex items-center justify-between shadow-xs">
         <div>
           <p className="text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase">
-            Completed
+            Completed / Approved
           </p>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold">{metrics?.completed || 15}</span>
+            <span className="text-3xl font-extrabold">{metrics?.completed ?? 0}</span>
             <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-0.5">
-              <TrendingUp size={12} /> {metrics?.completedRate || "83%"}
+              <TrendingUp size={12} /> {metrics?.completedRate ?? "0%"}
             </span>
           </div>
         </div>
@@ -43,7 +43,7 @@ export default function HistoryKPICards({ metrics }) {
             Needs Review
           </p>
           <p className="text-3xl font-extrabold mt-2">
-            {String(metrics?.needsReview || 3).padStart(2, "0")}
+            {String(metrics?.needsReview ?? 0).padStart(2, "0")}
           </p>
         </div>
         <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400">

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   ExternalLink,
@@ -9,6 +9,9 @@ import {
   FileCode,
   Trash2,
   Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +29,15 @@ function buildSectionDefs(item) {
   ];
 }
 
-export default function HistoryDetailDrawer({ item, detailLoading, onClose, onDelete, isDeleting }) {
+export default function HistoryDetailDrawer({
+  item,
+  detailLoading,
+  onClose,
+  onDelete,
+  isDeleting,
+  onStatusChange,
+  isUpdatingStatus = false,
+}) {
   const navigate = useNavigate();
 
   if (!item) return null;
@@ -40,6 +51,10 @@ export default function HistoryDetailDrawer({ item, detailLoading, onClose, onDe
   const totalAvailable = sectionDefs.filter((s) => s.hasContent).length;
   const remainingCount = Math.max(totalAvailable - visibleSections.filter((s) => s.hasContent).length, 0);
 
+  const isApproved = item.status === "Approved";
+  const isNeedsReview = item.status === "Needs Review";
+  const isCompleted = item.status === "Completed" || (!isApproved && !isNeedsReview);
+
   return (
     <div className="flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xl overflow-hidden">
       {/* Drawer Top Bar */}
@@ -47,12 +62,14 @@ export default function HistoryDetailDrawer({ item, detailLoading, onClose, onDe
         <div className="flex items-center justify-between">
           <span
             className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
-              item.status === "Completed"
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+              isApproved
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                : isNeedsReview
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
             }`}
           >
-            {item.status}
+            {item.status || "Completed"}
           </span>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[var(--text-muted)] font-medium mr-1">
@@ -89,6 +106,60 @@ export default function HistoryDetailDrawer({ item, detailLoading, onClose, onDe
 
       {/* Body Content */}
       <div className="p-5 space-y-5">
+        {/* Status & Review Workflow Action */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              Workflow Status
+            </h4>
+            <span className="text-[10px] text-[var(--text-muted)]">Quick Toggle</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]">
+            <button
+              type="button"
+              onClick={() => onStatusChange?.(item.id, "Completed")}
+              disabled={isUpdatingStatus}
+              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                isCompleted
+                  ? "bg-[var(--bg-surface)] text-indigo-400 shadow-xs border border-indigo-500/30"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <Sparkles size={12} />
+              <span>Completed</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusChange?.(item.id, "Approved")}
+              disabled={isUpdatingStatus}
+              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                isApproved
+                  ? "bg-emerald-500/10 text-emerald-400 shadow-xs border border-emerald-500/30"
+                  : "text-[var(--text-secondary)] hover:text-emerald-400"
+              }`}
+            >
+              <CheckCircle2 size={12} />
+              <span>Approved</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusChange?.(item.id, "Needs Review")}
+              disabled={isUpdatingStatus}
+              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                isNeedsReview
+                  ? "bg-amber-500/10 text-amber-400 shadow-xs border border-amber-500/30"
+                  : "text-[var(--text-secondary)] hover:text-amber-400"
+              }`}
+            >
+              <AlertTriangle size={12} />
+              <span>Review</span>
+            </button>
+          </div>
+        </div>
+
         {/* AI Summary */}
         <div className="space-y-2">
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">

@@ -68,17 +68,23 @@ export default function HistoryList({
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                      item.status === "Completed"
+                      item.status === "Approved"
                         ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                        : item.status === "Needs Review"
+                        ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                        : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        item.status === "Completed" ? "bg-emerald-400" : "bg-amber-400"
+                        item.status === "Approved"
+                          ? "bg-emerald-400"
+                          : item.status === "Needs Review"
+                          ? "bg-amber-400"
+                          : "bg-indigo-400"
                       }`}
                     />
-                    {item.status}
+                    {item.status || "Completed"}
                   </span>
                   {item.similarityWarning && (
                     <span className="text-[10px] text-amber-400/90 font-medium flex items-center gap-1">

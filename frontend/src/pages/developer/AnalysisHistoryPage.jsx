@@ -1,29 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import HistoryKPICards from "../../components/Analysis-history/HistoryKPICards";
 import HistoryFilters from "../../components/Analysis-history/HistoryFilters";
 import HistoryList from "../../components/Analysis-history/HistoryList";
 import HistoryDetailDrawer from "../../components/Analysis-history/HistoryDetailDrawer";
+import { parseDate, formatRelativeTime } from "../../utils/dateUtils";
 
 const API_BASE = "http://localhost:8000";
 
 function normalizeStatus(status) {
   if (!status) return "Completed";
-  return status.toUpperCase().includes("REVIEW") ? "Needs Review" : "Completed";
-}
-
-function formatTimeAgo(date) {
-  const diffMs = Date.now() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "1 day ago";
-  if (diffDays < 30) return `${diffDays} days ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+  const s = String(status).toUpperCase();
+  if (s.includes("REVIEW")) return "Needs Review";
+  if (s.includes("APPROV")) return "Approved";
+  return "Completed";
 }
 
 function normalizeListItem(raw) {
-  const createdDate = raw.created_at ? new Date(raw.created_at) : null;
+  const createdDate = parseDate(raw.created_at);
   return {
     id: raw.id,
     title: raw.title,
@@ -38,12 +33,12 @@ function normalizeListItem(raw) {
     time: createdDate
       ? createdDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
       : "",
-    timeAgo: createdDate ? formatTimeAgo(createdDate) : "",
+    timeAgo: createdDate ? formatRelativeTime(createdDate) : "",
   };
 }
 
 function normalizeDetailItem(raw) {
-  const createdDate = raw.created_at ? new Date(raw.created_at) : null;
+  const createdDate = parseDate(raw.created_at);
   return {
     ...raw,
     id: raw.id || raw._id,
@@ -55,12 +50,22 @@ function normalizeDetailItem(raw) {
     time: createdDate
       ? createdDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
       : raw.time,
-    timeAgo: createdDate ? formatTimeAgo(createdDate) : raw.timeAgo,
+    timeAgo: createdDate ? formatRelativeTime(createdDate) : raw.timeAgo,
   };
 }
 
 export default function AnalysisHistoryPage({ authToken }) {
+  const location = useLocation();
+
   const [rawItems, setRawItems] = useState([]);
+  const [projects, setProjects] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cached_projects");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState(null);
 
@@ -68,9 +73,12 @@ export default function AnalysisHistoryPage({ authToken }) {
   const [detailItem, setDetailItem] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProject, setSelectedProject] = useState("All Projects");
+  const [selectedProject, setSelectedProject] = useState(
+    location.state?.projectName || location.state?.project || "All Projects"
+  );
   const [selectedStatus, setSelectedStatus] = useState("All");
 
   const getToken = useCallback(
@@ -78,31 +86,64 @@ export default function AnalysisHistoryPage({ authToken }) {
     [authToken]
   );
 
-  // Fetch the history list on mount
+  // Fetch project list to enrich project filter options
   useEffect(() => {
-    async function fetchHistory() {
-      setListLoading(true);
-      setListError(null);
+    async function loadProjects() {
       try {
-        const res = await fetch(`${API_BASE}/history`, {
+        const res = await fetch(`${API_BASE}/projects`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
-        if (!res.ok) throw new Error("Failed to load analysis history.");
-        const data = await res.json();
-        const normalized = data.map(normalizeListItem);
-        setRawItems(normalized);
-        if (normalized.length > 0) {
-          setSelectedId(normalized[0].id);
+        if (res.ok) {
+          const projs = await res.json();
+          setProjects(projs);
+          localStorage.setItem("cached_projects", JSON.stringify(projs));
         }
-      } catch (err) {
-        console.log(err);
-        setListError(err.message);
-      } finally {
-        setListLoading(false);
+      } catch (e) {
+        console.error(e);
       }
     }
-    fetchHistory();
+    loadProjects();
   }, [getToken]);
+
+  const projectOptions = useMemo(() => {
+    const fromItems = rawItems.map((i) => i.project).filter(Boolean);
+    const fromProjects = projects.map((p) => p.name).filter(Boolean);
+    const unique = Array.from(new Set([...fromItems, ...fromProjects]));
+    return ["All Projects", ...unique];
+  }, [rawItems, projects]);
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedProject("All Projects");
+    setSelectedStatus("All");
+  };
+
+  const fetchHistoryList = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const res = await fetch(`${API_BASE}/history`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error("Failed to load analysis history.");
+      const data = await res.json();
+      const normalized = data.map(normalizeListItem);
+      setRawItems(normalized);
+      if (normalized.length > 0) {
+        setSelectedId((prev) => prev || normalized[0].id);
+      }
+    } catch (err) {
+      console.log(err);
+      setListError(err.message);
+    } finally {
+      setListLoading(false);
+    }
+  }, [getToken]);
+
+  // Fetch the history list on mount
+  useEffect(() => {
+    fetchHistoryList();
+  }, [fetchHistoryList]);
 
   // Fetch full detail whenever the selected row changes
   useEffect(() => {
@@ -128,6 +169,38 @@ export default function AnalysisHistoryPage({ authToken }) {
     }
     fetchDetail();
   }, [selectedId, getToken]);
+
+  const handleStatusChange = async (id, newStatus) => {
+    setIsUpdatingStatus(true);
+    // Optimistic UI update
+    setRawItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+    );
+    if (detailItem && detailItem.id === id) {
+      setDetailItem((prev) => ({ ...prev, status: newStatus }));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/history/${id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to update workflow status.");
+      }
+      toast.success(`Workflow status updated to "${newStatus}"`);
+    } catch (err) {
+      toast.error(err.message || "Failed to update workflow status.");
+      fetchHistoryList();
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const handleDeleteAnalysis = async (id, title) => {
     setDeletingId(id);
@@ -157,20 +230,30 @@ export default function AnalysisHistoryPage({ authToken }) {
 
   const filteredItems = useMemo(() => {
     return rawItems.filter((item) => {
+      const q = searchQuery.trim().toLowerCase();
       const matchSearch =
-        item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.filename?.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        item.title?.toLowerCase().includes(q) ||
+        item.filename?.toLowerCase().includes(q) ||
+        item.summary?.toLowerCase().includes(q);
+
       const matchProject =
-        selectedProject === "All Projects" || item.project === selectedProject;
+        selectedProject === "All Projects" ||
+        item.project?.toLowerCase() === selectedProject.toLowerCase() ||
+        item.project_id === selectedProject;
+
       const matchStatus =
         selectedStatus === "All" || item.status === selectedStatus;
+
       return matchSearch && matchProject && matchStatus;
     });
   }, [rawItems, searchQuery, selectedProject, selectedStatus]);
 
   const metrics = useMemo(() => {
     const total = rawItems.length;
-    const completed = rawItems.filter((i) => i.status === "Completed").length;
+    const completed = rawItems.filter(
+      (i) => i.status === "Completed" || i.status === "Approved"
+    ).length;
     const needsReview = rawItems.filter((i) => i.status === "Needs Review").length;
     const completedRate = total > 0 ? `${Math.round((completed / total) * 100)}%` : "0%";
     return { total, completed, completedRate, needsReview };
@@ -227,6 +310,8 @@ export default function AnalysisHistoryPage({ authToken }) {
                 setSelectedProject={setSelectedProject}
                 selectedStatus={selectedStatus}
                 setSelectedStatus={setSelectedStatus}
+                projectOptions={projectOptions}
+                onResetFilters={handleResetFilters}
               />
 
               <HistoryList
@@ -247,6 +332,8 @@ export default function AnalysisHistoryPage({ authToken }) {
                 onClose={() => setSelectedId(null)}
                 onDelete={handleDeleteAnalysis}
                 isDeleting={deletingId === drawerItem?.id}
+                onStatusChange={handleStatusChange}
+                isUpdatingStatus={isUpdatingStatus}
               />
             </div>
           </div>
