@@ -64,15 +64,8 @@ export default function TeamProgressHeader({
       transition={{ duration: 0.3 }}
       className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2"
     >
-      {/* Title & Breadcrumbs */}
+      {/* Title */}
       <div>
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-medium mb-1">
-          <span className="hover:text-[var(--text-primary)] transition-colors cursor-pointer">Home</span>
-          <ChevronRight size={12} className="text-[var(--text-muted)] opacity-60" />
-          <span className="text-[var(--text-primary)] font-semibold">Team Progress</span>
-        </div>
-
         <h1 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
           Team Progress
         </h1>
