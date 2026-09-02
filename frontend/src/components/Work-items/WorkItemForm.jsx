@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import { toInputDateFormat } from "../../data/mockWorkItems";
+import { toInputDateFormat } from "../../utils/dateUtils";
 import {
   createWorkItemApi,
   updateWorkItemApi,
