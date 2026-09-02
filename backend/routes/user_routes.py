@@ -1,6 +1,12 @@
+# backend/routes/user_routes.py
 from fastapi import APIRouter, Depends, HTTPException, status
-from services.auth_service import require_role
-from models.user_models import UserCreate, UserUpdate
+from services.auth_service import require_role, get_current_user
+from models.user_models import (
+    UserCreate,
+    UserUpdate,
+    UserProfileUpdate,
+    NotificationPreferencesModel,
+)
 from database.database import (
     get_all_users,
     get_user_by_id,
@@ -8,9 +14,72 @@ from database.database import (
     update_user_admin,
     delete_user_admin,
 )
+from services.user_service import (
+    get_user_profile_service,
+    update_user_profile_service,
+    get_notification_preferences_service,
+    update_notification_preferences_service,
+    delete_user_account_service,
+)
 
 router = APIRouter()
 
+
+# ==========================================
+# Authenticated User Self-Service Endpoints
+# ==========================================
+
+@router.get("/users/me")
+async def get_my_profile(current_user: dict = Depends(get_current_user)):
+    """
+    Returns the current authenticated user's profile metadata and preferences.
+    """
+    return await get_user_profile_service(current_user["id"])
+
+
+@router.put("/users/me")
+async def update_my_profile(
+    payload: UserProfileUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Updates the current authenticated user's personal details (Name, Avatar).
+    Role and Status cannot be modified through this endpoint.
+    """
+    return await update_user_profile_service(current_user["id"], payload)
+
+
+@router.get("/users/me/notification-preferences")
+async def get_my_notification_preferences(current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves the current user's notification preferences.
+    """
+    return await get_notification_preferences_service(current_user["id"])
+
+
+@router.put("/users/me/notification-preferences")
+async def update_my_notification_preferences(
+    payload: NotificationPreferencesModel,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Persists updated notification preference toggles for the authenticated user.
+    """
+    return await update_notification_preferences_service(current_user["id"], payload)
+
+
+@router.delete("/users/me")
+async def delete_my_account(current_user: dict = Depends(get_current_user)):
+    """
+    Permanently deletes the current authenticated user's account and memberships.
+    Fails safely if the user owns active projects.
+    """
+    return await delete_user_account_service(current_user["id"], current_user["email"])
+
+
+# ==========================================
+# Administrative User Management Endpoints
+# ==========================================
 
 @router.get("/users")
 async def list_users(current_user: dict = Depends(require_role(["Admin", "Developer", "QA"]))):
@@ -106,11 +175,11 @@ async def delete_user(
             detail="User not found"
         )
 
-    # Safety: prevent admin from deleting own account
+    # Safety: prevent admin from deleting own account through admin route
     if target_user["email"].strip().lower() == current_user["email"].strip().lower():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own admin account"
+            detail="Cannot delete your own admin account through user management"
         )
 
     success, error = await delete_user_admin(user_id)
