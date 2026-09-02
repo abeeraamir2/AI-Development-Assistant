@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import DeveloperKPICards from "../../components/Developer-overview/DeveloperKPICards";
 import RequirementActivityChart from "../../components/Developer-overview/RequirementActivityChart";
 import AnalysisHealthCard from "../../components/Developer-overview/AnalysisHealthCard";
@@ -11,11 +11,34 @@ import ProjectAccessGate from "../../components/Projects/ProjectAccessGate";
 import { useProjectAccess } from "../../context/ProjectAccessContext";
 import { toast, Toaster } from "sonner";
 
+// Module-level in-memory cache to make tab switching instant (0 ms wait)
+const _dashboardStatsCache = new Map();
+
 export default function OverviewPage({ authToken, userRole, userEmail }) {
-  const [data, setData] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const getInitialProjects = () => {
+    try {
+      const cached = localStorage.getItem("cached_projects");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const initialProjects = getInitialProjects();
+  const savedActiveId = localStorage.getItem("active_project_id");
+  const initialActive =
+    (savedActiveId && initialProjects.find((p) => (p.id || p._id) === savedActiveId)) ||
+    (initialProjects.length > 0 ? initialProjects[0] : null);
+
+  const [projects, setProjects] = useState(initialProjects);
+  const [selectedProject, setSelectedProject] = useState(initialActive);
+
+  const selectedProjId = selectedProject?.id || selectedProject?._id;
+  const cacheKey = selectedProjId || "all";
+
+  // Initialize with cached stats if available for instant display
+  const [data, setData] = useState(() => _dashboardStatsCache.get(cacheKey) || null);
+  const [loading, setLoading] = useState(() => !_dashboardStatsCache.has(cacheKey));
 
   const [projectToEdit, setProjectToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -28,7 +51,17 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
     localStorage.getItem("token") ||
     localStorage.getItem("authToken");
 
-  const selectedProjId = selectedProject?.id || selectedProject?._id;
+  const handleSelectProject = (proj) => {
+    setSelectedProject(proj);
+    const pid = proj?.id || proj?._id;
+    if (pid) {
+      localStorage.setItem("active_project_id", pid);
+    }
+    const newKey = pid || "all";
+    if (_dashboardStatsCache.has(newKey)) {
+      setData(_dashboardStatsCache.get(newKey));
+    }
+  };
 
   const {
     getProjectAccessStatus,
@@ -52,13 +85,25 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
 
         const projectList = await response.json();
         setProjects(projectList);
+        try {
+          localStorage.setItem("cached_projects", JSON.stringify(projectList));
+        } catch {
+          // ignore quota
+        }
         if (projectList.length > 0) {
           setSelectedProject((prev) => {
-            if (!prev) return projectList[0];
-            const exists = projectList.find(
-              (p) => p.id === (prev.id || prev._id) || p.name === prev.name
-            );
-            return exists || projectList[0];
+            const activeId = localStorage.getItem("active_project_id");
+            if (activeId) {
+              const matched = projectList.find((p) => (p.id || p._id) === activeId);
+              if (matched) return matched;
+            }
+            if (prev) {
+              const exists = projectList.find(
+                (p) => (p.id || p._id) === (prev.id || prev._id) || p.name === prev.name
+              );
+              if (exists) return exists;
+            }
+            return projectList[0];
           });
         } else {
           setSelectedProject(null);
@@ -71,15 +116,30 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
     fetchProjects();
   }, [authToken]);
 
-  // Batch query access statuses for all projects
+  // Batch query access statuses for all projects (only once per unique project list)
+  const prevAccessProjectIdsRef = useRef(null);
   useEffect(() => {
     if (projects && projects.length > 0) {
-      fetchAllProjectAccessStatuses(projects);
+      const projectIdsKey = projects.map((p) => p.id || p._id).sort().join(",");
+      if (prevAccessProjectIdsRef.current !== projectIdsKey) {
+        prevAccessProjectIdsRef.current = projectIdsKey;
+        fetchAllProjectAccessStatuses(projects);
+      }
     }
   }, [projects, fetchAllProjectAccessStatuses]);
 
-  // Fetch stats for the active project
+  // Fetch stats for the active project (silent background revalidation)
   useEffect(() => {
+    let isCurrent = true;
+    const currentKey = selectedProjId || "all";
+
+    // If cached in memory, immediately populate to prevent any UI delay
+    if (_dashboardStatsCache.has(currentKey)) {
+      setData(_dashboardStatsCache.get(currentKey));
+    } else {
+      setLoading(true);
+    }
+
     const fetchOverviewStats = async () => {
       try {
         const token = getToken();
@@ -96,18 +156,26 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         }
 
         const result = await response.json();
-        setData(result);
+        _dashboardStatsCache.set(currentKey, result);
+        if (isCurrent) {
+          setData(result);
+        }
       } catch (err) {
         console.error(err);
+      } finally {
+        if (isCurrent) setLoading(false);
       }
     };
 
     fetchOverviewStats();
+    return () => {
+      isCurrent = false;
+    };
   }, [authToken, selectedProjId]);
 
   const handleProjectCreated = (newProj) => {
     setProjects((prev) => [newProj, ...prev]);
-    setSelectedProject(newProj);
+    handleSelectProject(newProj);
     if (newProj?.id) {
       checkProjectAccess(newProj.id);
     }
@@ -126,7 +194,8 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
     setProjects((prev) => {
       const remaining = prev.filter((p) => (p.id || p._id) !== deletedId);
       if ((selectedProject?.id || selectedProject?._id) === deletedId) {
-        setSelectedProject(remaining.length > 0 ? remaining[0] : null);
+        const next = remaining.length > 0 ? remaining[0] : null;
+        handleSelectProject(next);
       }
       return remaining;
     });
@@ -147,7 +216,7 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
         metrics={data?.metrics}
         projects={projects}
         selectedProject={selectedProject?.id || selectedProject?.name}
-        onSelectProject={(proj) => setSelectedProject(proj)}
+        onSelectProject={handleSelectProject}
         onProjectCreated={handleProjectCreated}
         onEditProject={(proj) => {
           setProjectToEdit(proj);
@@ -176,7 +245,7 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
             projects={projects}
             statsProjects={data?.active_projects}
             selectedProject={selectedProject}
-            onSelectProject={(proj) => setSelectedProject(proj)}
+            onSelectProject={handleSelectProject}
             userEmail={userEmail}
             userRole={userRole}
           />
@@ -197,7 +266,7 @@ export default function OverviewPage({ authToken, userRole, userEmail }) {
             projects={projects}
             statsProjects={data?.active_projects}
             selectedProject={selectedProject}
-            onSelectProject={(proj) => setSelectedProject(proj)}
+            onSelectProject={handleSelectProject}
             userEmail={userEmail}
             userRole={userRole}
           />

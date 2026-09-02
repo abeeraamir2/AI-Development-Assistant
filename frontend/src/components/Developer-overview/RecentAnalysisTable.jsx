@@ -1,7 +1,7 @@
-// src/components/developer-overview/RecentAnalysesTable.jsx
 import React from "react";
 import { FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { formatRelativeTime } from "../../utils/dateUtils";
 
 export default function RecentAnalysisTable({ analyses = [] }) {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ export default function RecentAnalysisTable({ analyses = [] }) {
                     <span>{row.requirement}</span>
                   </td>
                   <td className="py-3.5 px-3 text-[var(--text-secondary)]">{row.project}</td>
-                  <td className="py-3.5 px-3 text-[var(--text-muted)]">{row.time}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)]">{formatRelativeTime(row.time || row.created_at)}</td>
                   <td className="py-3.5 px-3 text-right">
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
