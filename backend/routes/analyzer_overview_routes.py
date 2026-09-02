@@ -1,5 +1,6 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
+from bson import ObjectId
 from fastapi import APIRouter, Depends
 from services.auth_service import require_role
 from database.database import analysis_collection, projects_collection
@@ -36,10 +37,20 @@ async def get_developer_overview_stats(
     all_projects = await project_cursor.to_list(length=200)
     total_projects_count = len(all_projects)
 
-
-    query = {"user_email": user_email}
-    if project_id:
-        query["project_id"] = project_id
+    if project_id and project_id != "undefined" and project_id != "null":
+        clauses = [{"project_id": str(project_id)}]
+        if ObjectId.is_valid(project_id):
+            proj_doc = await projects_collection.find_one({"_id": ObjectId(project_id)})
+            if proj_doc and proj_doc.get("name"):
+                clauses.append({"project_name": proj_doc["name"]})
+        query = {"$or": clauses}
+    else:
+        user_clauses = []
+        if user_id:
+            user_clauses.append({"user_id": str(user_id)})
+        if user_email:
+            user_clauses.append({"user_email": str(user_email).strip().lower()})
+        query = {"$or": user_clauses} if user_clauses else {}
 
     cursor = analysis_collection.find(query).sort("created_at", -1)
     analyses = await cursor.to_list(length=300)
@@ -78,11 +89,8 @@ async def get_developer_overview_stats(
                 "id": str(item["_id"]),
                 "requirement": item.get("title", item.get("filename", "Requirement")),
                 "project": item.get("project_name", "Unknown Project"),
-                "time": (
-                    item.get("created_at").strftime("%b %d, %H:%M")
-                    if item.get("created_at")
-                    else "Just now"
-                ),
+                "created_at": created.isoformat() if created else None,
+                "time": created.isoformat() if created else None,
                 "status": status,
             })
 
@@ -120,27 +128,38 @@ async def get_developer_overview_stats(
         for day, count in activity_map.items()
     ]
 
-    all_analyses_cursor = analysis_collection.find({"user_email": user_email})
+    all_analyses_cursor = analysis_collection.find({})
     all_analyses = await all_analyses_cursor.to_list(length=1000)
 
     counts_by_project_id = {}
+    counts_by_project_name = {}
     for item in all_analyses:
-        pid = item.get("project_id")
-        counts_by_project_id[pid] = counts_by_project_id.get(pid, 0) + 1
+        pid = str(item.get("project_id", ""))
+        pname = str(item.get("project_name", "")).strip().lower()
+        if pid:
+            counts_by_project_id[pid] = counts_by_project_id.get(pid, 0) + 1
+        if pname:
+            counts_by_project_name[pname] = counts_by_project_name.get(pname, 0) + 1
 
     palette = ["#a78bfa", "#34d399", "#fb923c", "#60a5fa", "#f472b6"]
-    max_count = max(counts_by_project_id.values(), default=0)
 
     your_projects = []
     for i, proj in enumerate(all_projects):
         pid = str(proj["_id"])
-        count = counts_by_project_id.get(pid, 0)
+        pname = proj.get("name", "")
+        pname_key = pname.strip().lower()
+        count = counts_by_project_id.get(pid) or counts_by_project_name.get(pname_key, 0)
         your_projects.append({
-            "name": proj["name"],
+            "id": pid,
+            "name": pname,
             "reqs": count,
             "color": palette[i % len(palette)],
-            "percent": int((count / max_count) * 100) if max_count else 0,
+            "percent": 0,
         })
+
+    max_count = max([p["reqs"] for p in your_projects], default=0)
+    for p in your_projects:
+        p["percent"] = int((p["reqs"] / max_count) * 100) if max_count > 0 else 0
 
     return {
         "metrics": {

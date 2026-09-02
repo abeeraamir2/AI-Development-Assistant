@@ -1,6 +1,5 @@
-# backend/routes/analyzer_routes.py
 from typing import Optional
-from pydantic import BaseModel
+from datetime import datetime, timezone
 from fastapi import (
     APIRouter,
     Depends,
@@ -9,6 +8,10 @@ from fastapi import (
     HTTPException,
     UploadFile,
     status,
+)
+from models.analyzer_models import (
+    SimilarityCheckRequest,
+    AnalysisStatusUpdateRequest,
 )
 from services.auth_service import require_role
 from services.analysis_service import FALLBACK_RESULT, analyze_requirement
@@ -21,14 +24,10 @@ from database.database import (
     find_related_requirements,
     save_requirement_embeddings,
     delete_analysis,
+    update_analysis_status,
 )
 
 router = APIRouter()
-
-
-class SimilarityCheckRequest(BaseModel):
-    project_id: Optional[str] = None
-    text: str
 
 
 @router.post("/upload")
@@ -42,6 +41,7 @@ async def upload_file(
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
     user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id") or current_user.get("_id")
 
     resolved_project_name = project or "Project Alpha"
     resolved_project_id = project_id or "proj_01"
@@ -76,7 +76,8 @@ async def upload_file(
 
         related_context = await find_related_requirements(
             resolved_project_id,
-            query_embedding
+            query_embedding,
+            query_text=extracted_text,
         )
 
         analysis_result = analyze_requirement(
@@ -88,9 +89,15 @@ async def upload_file(
         if not isinstance(analysis_result, dict):
             analysis_result = dict(FALLBACK_RESULT)
 
+        now_utc = datetime.now(timezone.utc)
         analysis_result["project"] = resolved_project_name
         analysis_result["project_id"] = resolved_project_id
         analysis_result["filename"] = filename
+        analysis_result["created_at"] = now_utc.isoformat()
+
+        # Dynamic related count
+        rel_list = related_context or (analysis_result.get("evidence") or {}).get("related") or []
+        analysis_result["related_count"] = len(rel_list)
 
         try:
             saved_id = await save_analysis(
@@ -99,10 +106,13 @@ async def upload_file(
                 filename=filename,
                 extracted_text=extracted_text,
                 analysis_result=analysis_result,
+                user_id=user_id,
                 user_email=user_email,
             )
 
-            analysis_result["analysis_id"] = saved_id
+            analysis_result["id"] = saved_id
+            analysis_result["_id"] = saved_id
+            analysis_result["analysis_id"] = f"ANL-{saved_id[-6:].upper()}"
 
             await save_requirement_embeddings(
                 resolved_project_id,
@@ -132,12 +142,21 @@ async def upload_file(
 @router.get("/projects/{project_id}/related-requirements")
 async def get_related_requirements_endpoint(
     project_id: str,
+    text: Optional[str] = None,
     current_user: dict = Depends(require_role(["Admin", "Developer"])),
 ):
     """
     Fetches real related requirements from DB for a given project.
+    If 'text' is provided, computes real semantic embedding similarity.
     """
-    return await find_related_requirements(project_id, query_embedding=[], limit=5)
+    query_emb = []
+    clean_text = text.strip() if text else ""
+    if clean_text:
+        try:
+            query_emb = embed_text(clean_text)
+        except Exception as e:
+            print(f"[WARN] Failed to embed query text: {e}")
+    return await find_related_requirements(project_id, query_embedding=query_emb, query_text=clean_text, limit=5)
 
 
 @router.post("/check-similarity")
@@ -148,12 +167,18 @@ async def check_similarity_endpoint(
     """
     Checks if a typed or uploaded requirement is similar to existing requirements in DB for this project.
     """
-    if not req.project_id or not req.text.strip():
+    search_text = (req.input_text or req.text or "").strip()
+    if not req.project_id or not search_text:
         return {"similar_detected": False, "matches": []}
 
     try:
-        query_emb = embed_text(req.text.strip())
-        matches = await find_related_requirements(req.project_id, query_embedding=query_emb, limit=3)
+        query_emb = embed_text(search_text.strip())
+        matches = await find_related_requirements(
+            req.project_id,
+            query_emb,
+            query_text=search_text.strip(),
+            limit=3,
+        )
         top_match = matches[0] if matches else None
         if top_match and top_match.get("matchPercent", 0) >= 70:
             return {
@@ -180,7 +205,8 @@ async def history(
 ):
     """Summary rows for the History list (title, project, status, date)."""
     user_email = current_user.get("email") or current_user.get("user_email")
-    return await get_recent_analyses(user_email, limit=limit, project_id=project_id)
+    user_id = current_user.get("id") or current_user.get("user_id") or current_user.get("_id")
+    return await get_recent_analyses(user_id=user_id, user_email=user_email, limit=limit, project_id=project_id)
 
 
 @router.get("/history/{analysis_id}")
@@ -192,7 +218,9 @@ async def history_detail(
     Full analysis document for one history row.
     """
     user_email = current_user.get("email") or current_user.get("user_email")
-    doc = await get_analysis_by_id(analysis_id, user_email)
+    user_id = current_user.get("id") or current_user.get("user_id") or current_user.get("_id")
+    user_role = current_user.get("role", "")
+    doc = await get_analysis_by_id(analysis_id, user_id=user_id, user_email=user_email, user_role=user_role)
 
     if not doc:
         raise HTTPException(status_code=404, detail="Analysis not found.")
@@ -210,9 +238,10 @@ async def delete_analysis_endpoint(
     Deletes an analysis document and cleans up associated vector embeddings.
     """
     user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id") or current_user.get("_id")
     user_role = current_user.get("role", "")
 
-    success, error = await delete_analysis(analysis_id, user_email, user_role)
+    success, error = await delete_analysis(analysis_id, user_id=user_id, user_email=user_email, user_role=user_role)
     if not success:
         status_code = (
             status.HTTP_404_NOT_FOUND
@@ -222,3 +251,34 @@ async def delete_analysis_endpoint(
         raise HTTPException(status_code=status_code, detail=error)
 
     return {"message": "Analysis deleted successfully", "id": analysis_id}
+
+
+@router.patch("/history/{analysis_id}/status")
+@router.patch("/analyses/{analysis_id}/status")
+@router.put("/history/{analysis_id}/status")
+async def update_analysis_status_endpoint(
+    analysis_id: str,
+    payload: AnalysisStatusUpdateRequest,
+    current_user: dict = Depends(require_role(["Admin", "Developer", "QA"])),
+):
+    """
+    Updates the review/workflow status of an analysis document.
+    """
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id") or current_user.get("_id")
+    user_role = current_user.get("role", "")
+
+    success, result_or_err = await update_analysis_status(
+        analysis_id=analysis_id,
+        new_status=payload.status,
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result_or_err
+        )
+
+    return {"success": True, "status": result_or_err, "id": analysis_id}
