@@ -1,4 +1,6 @@
 import os
+import re
+import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from datetime import datetime, timezone
@@ -6,7 +8,14 @@ from bson import ObjectId
 
 load_dotenv()
 
-mongo_client = AsyncIOMotorClient(os.getenv("MONGODB_URI"))
+mongo_client = AsyncIOMotorClient(
+    os.getenv("MONGODB_URI"),
+    maxPoolSize=50,
+    minPoolSize=10,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+    socketTimeoutMS=10000,
+)
 
 db = mongo_client["requirement_analyzer"]
 
@@ -26,92 +35,131 @@ notifications_collection = db["notifications"]
 
 async def add_team_member(
     project_id: str,
-    user_email: str,
+    user_id: str = None,
+    user_email: str = None,
     role_in_project: str = "Contributor",
-    user_id: str = None
 ):
-    """Add or update a user's membership in a project team."""
-    if not project_id or not user_email:
+    """Add or update a user's membership in a project team using user_id as primary foreign key."""
+    if not project_id or (not user_id and not user_email):
         return
 
-    # Find user_id from users_collection if not explicitly provided
-    resolved_user_id = user_id
-    if not resolved_user_id:
-        user_doc = await users_collection.find_one({"email": user_email.strip().lower()})
+    resolved_user_id = str(user_id) if user_id else None
+    resolved_email = user_email.strip().lower() if user_email else None
+
+    # Resolve missing ID or email from users_collection
+    if not resolved_user_id and resolved_email:
+        user_doc = await users_collection.find_one({"email": resolved_email})
         if user_doc:
             resolved_user_id = str(user_doc["_id"])
+    elif resolved_user_id and not resolved_email:
+        if ObjectId.is_valid(resolved_user_id):
+            user_doc = await users_collection.find_one({"_id": ObjectId(resolved_user_id)})
+            if user_doc:
+                resolved_email = user_doc.get("email")
+
+    if not resolved_user_id:
+        return
 
     now = datetime.now(timezone.utc)
     await teams_collection.update_one(
-        {"project_id": str(project_id), "user_email": user_email.strip().lower()},
+        {"project_id": str(project_id), "user_id": resolved_user_id},
         {
             "$setOnInsert": {
                 "project_id": str(project_id),
-                "user_email": user_email.strip().lower(),
                 "user_id": resolved_user_id,
                 "role_in_project": role_in_project,
                 "joined_at": now,
             },
             "$set": {
-                "last_active": now
-            }
+                "user_email": resolved_email,
+                "last_active": now,
+            },
         },
-        upsert=True
+        upsert=True,
     )
 
 
 async def remove_team_member(
     project_id: str,
+    user_id: str = None,
     user_email: str = None,
-    user_id: str = None
 ):
-    """Remove a user from a project team in the teams collection."""
+    """Remove a user from a project team in the teams collection by user_id."""
     if not project_id:
         return False
 
-    query = {"project_id": str(project_id)}
     or_clauses = []
-    if user_email:
-        or_clauses.append({"user_email": str(user_email).strip().lower()})
     if user_id:
         or_clauses.append({"user_id": str(user_id)})
+    if user_email:
+        or_clauses.append({"user_email": str(user_email).strip().lower()})
     if not or_clauses:
         return False
 
-    query["$or"] = or_clauses
+    query = {"project_id": str(project_id), "$or": or_clauses}
     result = await teams_collection.delete_one(query)
     return result.deleted_count > 0
 
 
 async def is_user_in_project_team(
     project_id: str,
+    user_id: str = None,
     user_email: str = None,
-    user_id: str = None
 ) -> bool:
-    """Check whether a user is an active member of a project's team."""
+    """Check whether a user is an active member of a project's team using user_id."""
     if not project_id:
         return False
 
-    query = {"project_id": str(project_id)}
     or_clauses = []
-    if user_email:
-        or_clauses.append({"user_email": str(user_email).strip().lower()})
     if user_id:
         or_clauses.append({"user_id": str(user_id)})
+    if user_email:
+        or_clauses.append({"user_email": str(user_email).strip().lower()})
     if not or_clauses:
         return False
 
-    query["$or"] = or_clauses
+    query = {"project_id": str(project_id), "$or": or_clauses}
     member_doc = await teams_collection.find_one(query)
     return member_doc is not None
 
 
 async def get_project_team(project_id: str):
-    """Retrieve all team members for a given project."""
+    """Retrieve all team members for a given project with dynamically resolved user profiles."""
     if not project_id:
         return []
+
     cursor = teams_collection.find({"project_id": str(project_id)})
-    return await cursor.to_list(length=200)
+    team_docs = await cursor.to_list(length=200)
+
+    # Batch resolve user profiles from users_collection
+    user_ids = [
+        ObjectId(doc["user_id"])
+        for doc in team_docs
+        if doc.get("user_id") and ObjectId.is_valid(doc["user_id"])
+    ]
+    user_map = {}
+    if user_ids:
+        u_cursor = users_collection.find({"_id": {"$in": user_ids}})
+        async for u in u_cursor:
+            user_map[str(u["_id"])] = u
+
+    results = []
+    for doc in team_docs:
+        u_id = str(doc.get("user_id", ""))
+        user_info = user_map.get(u_id)
+        results.append({
+            "id": str(doc["_id"]),
+            "project_id": doc.get("project_id"),
+            "user_id": u_id,
+            "user_name": user_info.get("name") if user_info else doc.get("user_name", "Member"),
+            "user_email": user_info.get("email") if user_info else doc.get("user_email", ""),
+            "avatar": user_info.get("avatar") if user_info else "",
+            "role_in_project": doc.get("role_in_project", "Contributor"),
+            "joined_at": doc.get("joined_at"),
+            "last_active": doc.get("last_active"),
+        })
+
+    return results
 
 
 async def init_project_access_indexes():
@@ -188,11 +236,21 @@ async def save_analysis(
     filename: str,
     extracted_text: str,
     analysis_result: dict,
-    user_email: str,
+    user_id: str = None,
+    user_email: str = None,
 ):
+    # Resolve user_id if only email was passed
+    resolved_user_id = user_id
+    if not resolved_user_id and user_email:
+        user_doc = await users_collection.find_one({"email": user_email.strip().lower()})
+        if user_doc:
+            resolved_user_id = str(user_doc["_id"])
+
     document = {
-        "project_id": project_id,
+        "project_id": str(project_id) if project_id else None,
         "project_name": project_name,
+        "user_id": str(resolved_user_id) if resolved_user_id else None,
+        "user_email": user_email,
         "filename": filename,
         "title": analysis_result.get("title") or filename,
         "extracted_text": extracted_text,
@@ -203,32 +261,27 @@ async def save_analysis(
         "tasks": analysis_result.get("tasks", []),
         "edge_cases": analysis_result.get("edge_cases", []),
         "evidence": analysis_result.get("evidence"),
-        "type": analysis_result.get("type", "FEATURE"),
         "complexity": analysis_result.get(
             "complexity",
-            "MEDIUM"
-        ),
-        "confidence": analysis_result.get(
-            "confidence",
             "MEDIUM"
         ),
         "status": analysis_result.get(
             "status",
             "COMPLETED"
         ),
-        "user_email": user_email,
         "created_at": datetime.now(timezone.utc),
     }
 
     result = await analysis_collection.insert_one(document)
 
     # Automatically register contributor in teams collection
-    if project_id and user_email:
+    if project_id and (user_email or resolved_user_id):
         try:
             await add_team_member(
-                project_id=project_id,
+                project_id=str(project_id),
                 user_email=user_email,
-                role_in_project="Contributor"
+                role_in_project="Contributor",
+                user_id=resolved_user_id,
             )
         except Exception:
             pass
@@ -237,11 +290,26 @@ async def save_analysis(
 
 
 async def get_recent_analyses(
-    user_email: str,
+    user_id: str = None,
+    user_email: str = None,
     limit: int = 10,
     project_id: str = None
 ):
-    query = {"user_email": user_email}
+    resolved_user_id = user_id
+    if not resolved_user_id and user_email:
+        user_doc = await users_collection.find_one({"email": user_email.strip().lower()})
+        if user_doc:
+            resolved_user_id = str(user_doc["_id"])
+
+    user_clauses = []
+    if resolved_user_id:
+        user_clauses.append({"user_id": str(resolved_user_id)})
+    if user_email:
+        user_clauses.append({"user_email": user_email})
+
+    query = {}
+    if user_clauses:
+        query = {"$or": user_clauses}
     if project_id:
         query["project_id"] = str(project_id)
 
@@ -255,8 +323,17 @@ async def get_recent_analyses(
     results = []
 
     async for doc in cursor:
+        doc_id_str = str(doc["_id"])
+        ev = doc.get("evidence") or {}
+        rel_list = ev.get("related", []) if isinstance(ev, dict) else []
+        rel_count = doc.get("related_count")
+        if rel_count is None:
+            rel_count = len(rel_list)
+
         results.append({
-            "id": str(doc["_id"]),
+            "id": doc_id_str,
+            "_id": doc_id_str,
+            "analysis_id": f"ANL-{doc_id_str[-6:].upper()}",
             "title": doc.get(
                 "title",
                 doc.get("filename", "Untitled Analysis")
@@ -268,11 +345,17 @@ async def get_recent_analyses(
             ),
             "filename": doc.get("filename"),
             "summary": doc.get("summary", ""),
+            "complexity": doc.get("complexity", "MEDIUM"),
+            "related_count": rel_count,
             "status": doc.get(
                 "status",
                 "COMPLETED"
             ),
-            "created_at": doc["created_at"].isoformat() if doc.get("created_at") else None,
+            "created_at": (
+                (doc["created_at"].replace(tzinfo=timezone.utc) if doc["created_at"].tzinfo is None else doc["created_at"]).isoformat()
+                if doc.get("created_at") and isinstance(doc["created_at"], datetime)
+                else (str(doc["created_at"]) if doc.get("created_at") else None)
+            ),
         })
 
     return results
@@ -301,11 +384,20 @@ async def save_test_suite(
         if user_doc:
             resolved_user_id = str(user_doc["_id"])
 
+    # Resolve project_name if project_id is given
+    resolved_project_name = None
+    if project_id and ObjectId.is_valid(project_id):
+        proj_doc = await projects_collection.find_one({"_id": ObjectId(project_id)})
+        if proj_doc:
+            resolved_project_name = proj_doc.get("name")
+
     # Pure foreign key document structure
     document = {
         "filename": filename,
         "project_id": str(project_id) if project_id else None,
+        "project_name": resolved_project_name,
         "user_id": str(resolved_user_id) if resolved_user_id else None,
+        "user_email": user_email,
         "requirement_text": requirement_text[:5000] if requirement_text else "",
         "test_suite": test_suite_result,
         "total_cases": total_cases,
@@ -328,46 +420,227 @@ async def save_test_suite(
     return str(result.inserted_id)
 
 
+async def get_test_suites_list(
+    user_id: str = None,
+    user_email: str = None,
+    user_role: str = "QA",
+    project_id: str = None,
+    search: str = None,
+    limit: int = 100,
+):
+    """
+    Returns summarized test suite rows for Test History list/table.
+    Enforces role-based isolation (Admins view all, QA views own / authorized project suites).
+    """
+    query = {}
+    clauses = []
+
+    is_admin = user_role and user_role.lower() in ["admin", "administrator", "product manager", "product owner"]
+
+    if not is_admin:
+        resolved_user_id = user_id
+        if not resolved_user_id and user_email:
+            user_doc = await users_collection.find_one({"email": user_email})
+            if user_doc:
+                resolved_user_id = str(user_doc["_id"])
+
+        accessible_project_ids = []
+        if resolved_user_id or user_email:
+            team_or_clauses = []
+            if resolved_user_id:
+                team_or_clauses.append({"members.user_id": str(resolved_user_id)})
+            if user_email:
+                team_or_clauses.append({"members.email": user_email})
+            async for t_doc in teams_collection.find({"$or": team_or_clauses}):
+                pid = t_doc.get("project_id")
+                if pid:
+                    accessible_project_ids.append(str(pid))
+
+            proj_or_clauses = []
+            if resolved_user_id:
+                proj_or_clauses.append({"owner_id": str(resolved_user_id)})
+            if user_email:
+                proj_or_clauses.append({"owner_email": user_email})
+            async for p_doc in projects_collection.find({"$or": proj_or_clauses}):
+                accessible_project_ids.append(str(p_doc["_id"]))
+
+        access_conditions = []
+        if resolved_user_id:
+            access_conditions.append({"user_id": str(resolved_user_id)})
+        if user_email:
+            access_conditions.append({"user_email": user_email})
+        if accessible_project_ids:
+            access_conditions.append({"project_id": {"$in": list(set(accessible_project_ids))}})
+
+        # If user has no specific records yet, also show legacy documents associated with user email
+        if access_conditions:
+            clauses.append({"$or": access_conditions})
+
+    if project_id and project_id != "All" and project_id != "All Projects":
+        clauses.append({"project_id": str(project_id)})
+
+    if search and search.strip():
+        s_term = search.strip()
+        clauses.append({
+            "$or": [
+                {"filename": {"$regex": s_term, "$options": "i"}},
+                {"project_name": {"$regex": s_term, "$options": "i"}},
+                {"requirement_text": {"$regex": s_term, "$options": "i"}},
+            ]
+        })
+
+    if clauses:
+        query = {"$and": clauses} if len(clauses) > 1 else clauses[0]
+
+    cursor = test_suites_collection.find(query).sort("created_at", -1).limit(limit)
+    raw_suites = await cursor.to_list(length=limit)
+
+    # Fetch all project names in batch for fast lookups
+    all_projs = await projects_collection.find({}).to_list(length=300)
+    proj_map = {str(p["_id"]): p.get("name") for p in all_projs}
+
+    results = []
+    for doc in raw_suites:
+        pid = doc.get("project_id")
+        resolved_proj_name = (
+            doc.get("project_name") or
+            (proj_map.get(str(pid)) if pid else None) or
+            ("General Workspace" if not pid else "Project Workspace")
+        )
+
+        ts = doc.get("test_suite", {})
+        categories = []
+        calc_total = 0
+        if isinstance(ts, dict):
+            for cat_name, cat_cases in ts.items():
+                if isinstance(cat_cases, list) and len(cat_cases) > 0:
+                    categories.append(cat_name)
+                    calc_total += len(cat_cases)
+
+        final_total = doc.get("total_cases") if doc.get("total_cases") is not None else calc_total
+
+        created_dt = doc.get("created_at")
+        if created_dt and created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
+
+        results.append({
+            "id": str(doc["_id"]),
+            "title": doc.get("filename", "Test Suite"),
+            "filename": doc.get("filename", "Test Suite"),
+            "project_id": pid,
+            "project_name": resolved_proj_name,
+            "total_cases": final_total,
+            "categories": categories,
+            "languages": doc.get("languages", []),
+            "files_count": doc.get("files_count", 0),
+            "created_at": created_dt.isoformat() if created_dt else None,
+            "user_email": doc.get("user_email"),
+        })
+
+    return results
+
+
+async def get_test_suite_by_id(
+    suite_id: str,
+    user_id: str = None,
+    user_email: str = None,
+    user_role: str = "QA",
+):
+    try:
+        if ObjectId.is_valid(suite_id):
+            query = {"_id": ObjectId(suite_id)}
+        else:
+            query = {"_id": suite_id}
+
+        doc = await test_suites_collection.find_one(query)
+        if not doc:
+            return None
+
+        pid = doc.get("project_id")
+        project_name = doc.get("project_name")
+        if pid and not project_name and ObjectId.is_valid(pid):
+            p_doc = await projects_collection.find_one({"_id": ObjectId(pid)})
+            if p_doc:
+                project_name = p_doc.get("name")
+
+        if not project_name:
+            project_name = "General Workspace"
+
+        ts = doc.get("test_suite", {})
+        categories = []
+        calc_total = 0
+        if isinstance(ts, dict):
+            for cat_name, cat_cases in ts.items():
+                if isinstance(cat_cases, list) and len(cat_cases) > 0:
+                    categories.append(cat_name)
+                    calc_total += len(cat_cases)
+
+        final_total = doc.get("total_cases") if doc.get("total_cases") is not None else calc_total
+
+        created_dt = doc.get("created_at")
+        if created_dt and created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
+
+        return {
+            "id": str(doc["_id"]),
+            "title": doc.get("filename", "Test Suite"),
+            "filename": doc.get("filename", "Test Suite"),
+            "project_id": pid,
+            "project_name": project_name,
+            "requirement_text": doc.get("requirement_text", ""),
+            "test_suite": ts,
+            "total_cases": final_total,
+            "categories": categories,
+            "languages": doc.get("languages", []),
+            "files_count": doc.get("files_count", 0),
+            "created_at": created_dt.isoformat() if created_dt else None,
+            "user_id": doc.get("user_id"),
+            "user_email": doc.get("user_email"),
+        }
+    except Exception as e:
+        print(f"[WARN] Failed to get test suite by id: {e}")
+        return None
+
+
+async def delete_test_suite_by_id(
+    suite_id: str,
+    user_id: str = None,
+    user_email: str = None,
+    user_role: str = "QA",
+):
+    try:
+        if ObjectId.is_valid(suite_id):
+            query = {"_id": ObjectId(suite_id)}
+        else:
+            query = {"_id": suite_id}
+
+        doc = await test_suites_collection.find_one(query)
+        if not doc:
+            return False
+
+        # Authorization: Admin or creator
+        is_admin = user_role and user_role.lower() in ["admin", "administrator", "product manager", "product owner"]
+        if not is_admin:
+            is_creator = (
+                (user_id and doc.get("user_id") and str(doc.get("user_id")) == str(user_id)) or
+                (user_email and doc.get("user_email") and doc.get("user_email").lower() == user_email.lower())
+            )
+            if not is_creator:
+                return False
+
+        await test_suites_collection.delete_one({"_id": doc["_id"]})
+        return True
+    except Exception as e:
+        print(f"[WARN] Failed to delete test suite: {e}")
+        return False
+
+
 async def get_recent_test_suites(
     user_id: str = None,
     user_email: str = None,
     limit: int = 10
 ):
-    resolved_user_id = user_id
-    if not resolved_user_id and user_email:
-        user_doc = await users_collection.find_one({"email": user_email})
-        if user_doc:
-            resolved_user_id = str(user_doc["_id"])
-
-    query = {}
-    if resolved_user_id and user_email:
-        query = {"$or": [{"user_id": str(resolved_user_id)}, {"user_email": user_email}]}
-    elif resolved_user_id:
-        query = {"user_id": str(resolved_user_id)}
-    elif user_email:
-        query = {"user_email": user_email}
-
-    cursor = (
-        test_suites_collection
-        .find(query)
-        .sort("created_at", -1)
-        .limit(limit)
-    )
-
-    results = []
-
-    async for doc in cursor:
-        results.append({
-            "id": str(doc["_id"]),
-            "filename": doc.get("filename", "Test Suite"),
-            "project_id": doc.get("project_id"),
-            "user_id": doc.get("user_id"),
-            "test_suite": doc.get("test_suite"),
-            "total_cases": doc.get("total_cases", 0),
-            "created_at": doc["created_at"].isoformat() if doc.get("created_at") else None
-        })
-
-    return results
+    return await get_test_suites_list(user_id=user_id, user_email=user_email, limit=limit)
 
 
 async def save_requirement_embeddings(
@@ -389,17 +662,20 @@ async def save_requirement_embeddings(
 
     documents = []
 
-    for criterion, vector in zip(
-        criteria,
-        vectors
+    for idx, (criterion, vector) in enumerate(
+        zip(criteria, vectors),
+        start=1
     ):
+        raw_req_id = criterion.get("src")
+        if not raw_req_id or str(raw_req_id).upper() in ["ORIGINAL", "UNKNOWN", "NONE", ""]:
+            req_id = f"REQ-{idx:03d}"
+        else:
+            req_id = str(raw_req_id)
+
         documents.append({
             "project_id": project_id,
             "analysis_id": analysis_id,
-            "req_id": criterion.get(
-                "src",
-                "UNKNOWN"
-            ),
+            "req_id": req_id,
             "text": criterion["text"],
             "embedding": vector,
             "created_at": datetime.now(timezone.utc),
@@ -411,94 +687,213 @@ async def save_requirement_embeddings(
         )
 
 
+def generate_context_aware_reason(query_text: str, related_text: str, match_pct: int) -> str:
+    """
+    Generates meaningful, concrete relationship explanations between two requirements
+    based on shared domain entities, technical keywords, and architectural components.
+    """
+    q_lower = (query_text or "").lower()
+    r_lower = (related_text or "").lower()
+
+    themes = []
+    if any(k in q_lower for k in ["cart", "item", "product", "quantity"]) and any(k in r_lower for k in ["cart", "item", "order", "checkout", "product"]):
+        themes.append("cart item state management and order initiation")
+    if any(k in q_lower for k in ["pay", "checkout", "stripe", "billing", "card", "price", "amount"]) and any(k in r_lower for k in ["pay", "checkout", "stripe", "billing", "amount", "order"]):
+        themes.append("checkout transaction processing and payment gateway handling")
+    if any(k in q_lower for k in ["auth", "token", "password", "login", "user", "session", "permission"]) and any(k in r_lower for k in ["auth", "token", "password", "user", "session", "identity", "role"]):
+        themes.append("user identity verification, session tokens, and security policies")
+    if any(k in q_lower for k in ["email", "notify", "notification", "alert", "message"]) and any(k in r_lower for k in ["email", "notify", "message", "notification", "alert"]):
+        themes.append("notification triggers, email delivery, and alert workflows")
+    if any(k in q_lower for k in ["table", "db", "schema", "database", "foreign key", "user_id"]) and any(k in r_lower for k in ["table", "db", "schema", "database", "record"]):
+        themes.append("relational table schemas, foreign key references, and data integrity")
+    if any(k in q_lower for k in ["api", "endpoint", "route", "http", "payload", "response"]) and any(k in r_lower for k in ["api", "endpoint", "route", "http", "response"]):
+        themes.append("API contract payload structures and status response handling")
+
+    if themes:
+        return f"Cross-references {themes[0]} to maintain consistency across system workflows."
+
+    # Extract common domain words (excluding common stop words)
+    stop_words = {'shall', 'user', 'users', 'system', 'able', 'with', 'from', 'that', 'this', 'have', 'when', 'then', 'will', 'must', 'each', 'such', 'into', 'only', 'more', 'they', 'their', 'been', 'which'}
+    q_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', q_lower)) - stop_words
+    r_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', r_lower)) - stop_words
+    common = list(q_words.intersection(r_words))
+
+    if common:
+        kw_str = ", ".join(f"'{k}'" for k in common[:3])
+        return f"Shares operational domain context concerning {kw_str} and validation rules."
+
+    if match_pct >= 85:
+        return "Defines prerequisite functional rules and operational dependencies required for this requirement."
+    elif match_pct >= 75:
+        return "Provides supporting domain context and shared entity models across the project."
+    else:
+        return "Shares background operational constraints and business logic."
+
+
 async def find_related_requirements(
     project_id: str,
-    query_embedding: list[float],
-    limit: int = 5
+    query_embedding: list[float] = None,
+    query_text: str = "",
+    limit: int = 5,
+    min_similarity: float = 0.50,
 ):
     if not project_id:
         return []
 
-    # 1. Try Atlas Vector Search
+    # If query embedding is provided, perform authentic semantic vector similarity
+    if query_embedding and len(query_embedding) > 0:
+        # 1. Try Atlas Vector Search if configured
+        try:
+            pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": "requirement_vector_index",
+                        "path": "embedding",
+                        "queryVector": query_embedding,
+                        "numCandidates": 100,
+                        "limit": limit,
+                        "filter": {
+                            "project_id": str(project_id)
+                        },
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "id": "$req_id",
+                        "excerpt": "$text",
+                        "score": {
+                            "$meta": "vectorSearchScore"
+                        },
+                    }
+                },
+            ]
+            results = []
+            async for doc in requirement_embeddings_collection.aggregate(pipeline):
+                score = doc.get("score", 0.0)
+                if score >= min_similarity:
+                    match_pct = round(score * 100)
+                    text = doc.get("excerpt", "")
+                    title = text[:65] + ("..." if len(text) > 65 else "")
+                    raw_id = doc.get("id")
+                    clean_id = (
+                        f"REQ-{len(results)+1:03d}"
+                        if not raw_id or str(raw_id).upper() in ["ORIGINAL", "UNKNOWN", "NONE", ""]
+                        else str(raw_id)
+                    )
+                    reason = generate_context_aware_reason(query_text, text, match_pct)
+                    results.append({
+                        "id": clean_id,
+                        "match": f"{match_pct}%",
+                        "matchPercent": match_pct,
+                        "excerpt": text,
+                        "title": title,
+                        "why_related": reason,
+                    })
+            if results:
+                return results
+        except Exception:
+            pass
+
+        # 2. In-memory exact Cosine Similarity on stored project embeddings
+        try:
+            cursor = requirement_embeddings_collection.find({"project_id": str(project_id)})
+            candidates = []
+            q_vec = np.array(query_embedding, dtype=np.float32)
+            q_norm = np.linalg.norm(q_vec)
+
+            if q_norm > 0:
+                async for doc in cursor:
+                    stored_emb = doc.get("embedding")
+                    if stored_emb and len(stored_emb) == len(query_embedding):
+                        s_vec = np.array(stored_emb, dtype=np.float32)
+                        s_norm = np.linalg.norm(s_vec)
+                        if s_norm > 0:
+                            sim = float(np.dot(q_vec, s_vec) / (q_norm * s_norm))
+                            if sim >= min_similarity:
+                                candidates.append((sim, doc))
+
+                candidates.sort(key=lambda x: x[0], reverse=True)
+                results = []
+                for idx, (sim, doc) in enumerate(candidates[:limit], start=1):
+                    match_pct = round(sim * 100)
+                    text = doc.get("text", "")
+                    title = text[:65] + ("..." if len(text) > 65 else "")
+                    raw_id = doc.get("req_id")
+                    clean_id = (
+                        f"REQ-{idx:03d}"
+                        if not raw_id or str(raw_id).upper() in ["ORIGINAL", "UNKNOWN", "NONE", ""]
+                        else str(raw_id)
+                    )
+                    reason = generate_context_aware_reason(query_text, text, match_pct)
+
+                    results.append({
+                        "id": clean_id,
+                        "match": f"{match_pct}%",
+                        "matchPercent": match_pct,
+                        "excerpt": text,
+                        "title": title,
+                        "why_related": reason,
+                    })
+                return results
+        except Exception as err:
+            print(f"[WARN] Error calculating embedding similarity: {err}")
+
+        # If no genuine matches meet the threshold, return empty list
+        return []
+
+    # If no query embedding provided (e.g. initial project context view), return stored requirements with no fake match percentages
     try:
-        pipeline = [
-            {
-                "$vectorSearch": {
-                    "index": "requirement_vector_index",
-                    "path": "embedding",
-                    "queryVector": query_embedding,
-                    "numCandidates": 100,
-                    "limit": limit,
-                    "filter": {
-                        "project_id": str(project_id)
-                    },
-                }
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "id": "$req_id",
-                    "excerpt": "$text",
-                    "score": {
-                        "$meta": "vectorSearchScore"
-                    },
-                }
-            },
-        ]
+        cursor = requirement_embeddings_collection.find({"project_id": str(project_id)}).sort("created_at", -1).limit(limit)
         results = []
-        async for doc in requirement_embeddings_collection.aggregate(pipeline):
-            score = doc.get("score", 0.0)
-            match_pct = round(score * 100)
-            text = doc.get("excerpt", "")
+        async for idx, doc in enumerate(cursor, start=1):
+            text = doc.get("text", "")
             title = text[:65] + ("..." if len(text) > 65 else "")
+            raw_id = doc.get("req_id")
+            clean_id = (
+                f"REQ-{idx:03d}"
+                if not raw_id or str(raw_id).upper() in ["ORIGINAL", "UNKNOWN", "NONE", ""]
+                else str(raw_id)
+            )
             results.append({
-                "id": doc.get("id", "REQ"),
-                "match": f"{match_pct}%",
-                "matchPercent": match_pct,
+                "id": clean_id,
+                "title": title,
                 "excerpt": text,
-                "title": title
+                "matchPercent": None,
+                "match": None,
+                "why_related": generate_context_aware_reason(query_text, text, 80),
             })
         if results:
             return results
-    except Exception as e:
-        print(f"[WARN] Atlas vector search not available: {e}. Using fallback.")
 
-    # 2. In-memory / MongoDB requirement criteria fallback
-    try:
-        cursor = analysis_collection.find({"project_id": str(project_id)}).sort("created_at", -1).limit(10)
-        results = []
-        async for a_doc in cursor:
+        # Fallback to analysis criteria if no standalone embeddings document yet
+        cursor2 = analysis_collection.find({"project_id": str(project_id)}).sort("created_at", -1).limit(5)
+        async for a_doc in cursor2:
             criteria = a_doc.get("criteria", [])
-            created_at_dt = a_doc.get("created_at")
-            time_str = created_at_dt.strftime("%b %d, %Y") if created_at_dt else "recently"
-            if criteria:
-                for idx, crit in enumerate(criteria[:3]):
-                    text = crit.get("text", "")
-                    title = text[:60] + ("..." if len(text) > 60 else "")
-                    results.append({
-                        "id": crit.get("src") or f"REQ-{len(results)+1:03d}",
-                        "title": title,
-                        "excerpt": text,
-                        "matchPercent": max(65, 95 - (len(results) * 6)),
-                        "match": f"{max(65, 95 - (len(results) * 6))}%",
-                        "timeAgo": time_str,
-                        "analysis_id": str(a_doc["_id"])
-                    })
-            else:
-                title = a_doc.get("title") or a_doc.get("filename", "Requirement Spec")
+            for crit in criteria[:2]:
+                text = crit.get("text", "")
+                title = text[:65] + ("..." if len(text) > 65 else "")
+                raw_id = crit.get("src")
+                clean_id = (
+                    f"REQ-{len(results)+1:03d}"
+                    if not raw_id or str(raw_id).upper() in ["ORIGINAL", "UNKNOWN", "NONE", ""]
+                    else str(raw_id)
+                )
                 results.append({
-                    "id": f"REQ-{len(results)+1:03d}",
+                    "id": clean_id,
                     "title": title,
-                    "excerpt": a_doc.get("summary", title),
-                    "matchPercent": max(70, 92 - (len(results) * 5)),
-                    "match": f"{max(70, 92 - (len(results) * 5))}%",
-                    "timeAgo": time_str,
-                    "analysis_id": str(a_doc["_id"])
+                    "excerpt": text,
+                    "matchPercent": None,
+                    "match": None,
+                    "why_related": generate_context_aware_reason(query_text, text, 80),
                 })
-
-        return results[:limit]
-    except Exception as fallback_err:
-        print(f"[ERROR] Failed to fetch related requirements from DB: {fallback_err}")
+                if len(results) >= limit:
+                    break
+            if len(results) >= limit:
+                break
+        return results
+    except Exception as e:
+        print(f"[WARN] Failed to fetch project requirements: {e}")
         return []
 
 
@@ -511,26 +906,60 @@ async def get_project_related_requirements(project_id: str, limit: int = 5):
 
 async def get_analysis_by_id(
     analysis_id: str,
-    user_email: str
+    user_id: str = None,
+    user_email: str = None,
+    user_role: str = ""
 ):
     try:
         obj_id = ObjectId(analysis_id)
     except Exception:
         return None
 
-    doc = await analysis_collection.find_one({
-        "_id": obj_id,
-        "user_email": user_email
-    })
+    resolved_user_id = user_id
+    if not resolved_user_id and user_email:
+        user_doc = await users_collection.find_one({"email": user_email.strip().lower()})
+        if user_doc:
+            resolved_user_id = str(user_doc["_id"])
+
+    if user_role == "Admin":
+        doc = await analysis_collection.find_one({"_id": obj_id})
+    else:
+        user_clauses = []
+        if resolved_user_id:
+            user_clauses.append({"user_id": str(resolved_user_id)})
+        if user_email:
+            user_clauses.append({"user_email": user_email})
+
+        query = {"_id": obj_id}
+        if user_clauses:
+            query["$or"] = user_clauses
+
+        doc = await analysis_collection.find_one(query)
 
     if not doc:
         return None
 
-    doc["id"] = str(doc["_id"])
-    doc["_id"] = str(doc["_id"])
+    doc_id_str = str(doc["_id"])
+    doc["id"] = doc_id_str
+    doc["_id"] = doc_id_str
+    doc["analysis_id"] = f"ANL-{doc_id_str[-6:].upper()}"
+
+    ev = doc.get("evidence") or {}
+    rel_list = ev.get("related", []) if isinstance(ev, dict) else []
+    if doc.get("related_count") is None:
+        doc["related_count"] = len(rel_list)
+
+    if not doc.get("complexity"):
+        doc["complexity"] = "MEDIUM"
 
     if doc.get("created_at"):
-        doc["created_at"] = doc["created_at"].isoformat()
+        dt = doc["created_at"]
+        if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            doc["created_at"] = dt.isoformat()
+        else:
+            doc["created_at"] = str(dt)
 
     return doc
 
@@ -896,25 +1325,7 @@ async def delete_project(
 
     return True, None
 
-
-async def backfill_project_owner_ids_if_needed():
-    """Ensure any existing project documents have owner_id populated as foreign key reference."""
-    try:
-        legacy_projects = await projects_collection.find({"owner_id": {"$exists": False}}).to_list(length=500)
-        for proj in legacy_projects:
-            owner_email = proj.get("owner_email")
-            if owner_email:
-                user = await users_collection.find_one({"email": owner_email.strip().lower()})
-                if user:
-                    await projects_collection.update_one(
-                        {"_id": proj["_id"]},
-                        {"$set": {"owner_id": str(user["_id"])}, "$unset": {"owner_email": ""}}
-                    )
-    except Exception:
-        pass
-
-
-async def delete_analysis(analysis_id: str, user_email: str, user_role: str = ""):
+async def delete_analysis(analysis_id: str, user_id: str = "", user_email: str = "", user_role: str = ""):
     try:
         obj_id = ObjectId(analysis_id)
     except Exception:
@@ -924,8 +1335,12 @@ async def delete_analysis(analysis_id: str, user_email: str, user_role: str = ""
     if not doc:
         return False, "Analysis not found"
 
-    if user_role != "Admin" and doc.get("user_email") != user_email:
-        return False, "You do not have permission to delete this analysis"
+    if user_role != "Admin":
+        doc_user_id = str(doc.get("user_id", ""))
+        doc_user_email = doc.get("user_email", "")
+        is_owner = (user_id and doc_user_id == str(user_id)) or (user_email and doc_user_email == user_email)
+        if not is_owner:
+            return False, "You do not have permission to delete this analysis"
 
     result = await analysis_collection.delete_one({"_id": obj_id})
     if result.deleted_count == 0:
@@ -935,3 +1350,29 @@ async def delete_analysis(analysis_id: str, user_email: str, user_role: str = ""
     await requirement_embeddings_collection.delete_many({"analysis_id": analysis_id})
 
     return True, None
+
+
+async def update_analysis_status(analysis_id: str, new_status: str, user_id: str = "", user_email: str = "", user_role: str = ""):
+    try:
+        obj_id = ObjectId(analysis_id)
+    except Exception:
+        return False, "Invalid analysis ID format"
+
+    doc = await analysis_collection.find_one({"_id": obj_id})
+    if not doc:
+        return False, "Analysis not found"
+
+    if user_role != "Admin":
+        doc_user_id = str(doc.get("user_id", ""))
+        doc_user_email = doc.get("user_email", "")
+        is_owner = (user_id and doc_user_id == str(user_id)) or (user_email and doc_user_email == user_email)
+        if not is_owner and user_role not in ["Developer", "QA"]:
+            return False, "You do not have permission to update this analysis status"
+
+    normalized = "Needs Review" if "REVIEW" in new_status.upper() else ("Approved" if "APPROV" in new_status.upper() else "Completed")
+
+    await analysis_collection.update_one(
+        {"_id": obj_id},
+        {"$set": {"status": normalized}}
+    )
+    return True, normalized
