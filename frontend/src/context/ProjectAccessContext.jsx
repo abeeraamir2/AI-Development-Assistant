@@ -95,24 +95,39 @@ export function ProjectAccessProvider({ children }) {
 
     try {
       const validProjects = projectList.filter((p) => p && (p.id || p._id));
-      const promises = validProjects.map(async (p) => {
+      const newlyLoaded = {};
+      const toFetch = [];
+
+      validProjects.forEach((p) => {
         const pid = p.id || p._id;
-        try {
-          const res = await getProjectAccessStatusApi(pid);
-          return { id: pid, status: res?.status || "NOT_REQUESTED" };
-        } catch {
-          return { id: pid, status: "NOT_REQUESTED" };
+        // Public projects are always approved without network calls
+        if (p.visibility && p.visibility.toLowerCase() === "public") {
+          newlyLoaded[pid] = "APPROVED";
+        } else {
+          toFetch.push(pid);
         }
       });
 
-      const results = await Promise.all(promises);
-      setAccessStates((prev) => {
-        const next = { ...prev };
-        results.forEach(({ id, status }) => {
-          next[id] = status;
+      if (toFetch.length > 0) {
+        const promises = toFetch.map(async (pid) => {
+          try {
+            const res = await getProjectAccessStatusApi(pid);
+            return { id: pid, status: res?.status || "NOT_REQUESTED" };
+          } catch {
+            return { id: pid, status: "NOT_REQUESTED" };
+          }
         });
-        return next;
-      });
+
+        const results = await Promise.all(promises);
+        results.forEach(({ id, status }) => {
+          newlyLoaded[id] = status;
+        });
+      }
+
+      setAccessStates((prev) => ({
+        ...prev,
+        ...newlyLoaded,
+      }));
     } catch (err) {
       console.warn("Failed to batch load project access statuses:", err);
     }
