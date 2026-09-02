@@ -13,17 +13,14 @@ from routes.work_item_routes import router as work_item_router
 from routes.project_access_routes import router as project_access_router
 from routes.notification_routes import router as notification_router
 from database.database import (
-    backfill_project_owner_ids_if_needed,
     init_project_access_indexes,
 )
-from services.work_item_service import init_work_items_indexes_and_counter, purge_mock_work_items
+from services.work_item_service import init_work_items_indexes_and_counter
 
 app = FastAPI()
 
 @app.on_event("startup")
 async def on_startup():
-    await backfill_project_owner_ids_if_needed()
-    await purge_mock_work_items()
     await init_work_items_indexes_and_counter()
     await init_project_access_indexes()
 
