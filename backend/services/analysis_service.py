@@ -16,10 +16,8 @@ FALLBACK_RESULT = {
     "filename": "Password_Reset_Requirement.pdf",
     "analysis_id": "ANL-8429",
     "status": "COMPLETED",
-    "type": "FEATURE",
     "complexity": "MEDIUM",
     "related_count": 3,
-    "confidence": "HIGH",
     "summary": "The user password reset flow enables registered users to securely regain access to their accounts if they forget their credentials. It involves an email-based verification system where a time-limited, unique token is generated and sent to the user's verified email address.",
     "criteria": [
         {"text": "User can request a password reset by providing their registered email address.", "src": "REQ-001"},
@@ -59,14 +57,35 @@ FALLBACK_RESULT = {
     ],
     "evidence": {
         "active_context": {
-            "title": "REQ-003 — Password Reset Email",
-            "source_doc": "Password_Reset_Requirement.pdf (Pg 4)",
+            "title": "Password Reset Email Workflow",
+            "source_doc": "Password_Reset_Requirement.pdf",
             "excerpt": "Users should receive a secure email containing a password reset link when they forget their password."
         },
         "related": [
-            {"id": "REQ-002", "match": "91%"},
-            {"id": "SEC-04", "match": "84%"},
-            {"id": "SEC-05", "match": "76%"}
+            {
+                "id": "REQ-002",
+                "title": "Token Expiration Security",
+                "match": "88%",
+                "matchPercent": 88,
+                "excerpt": "System generates a secure, unique token valid for exactly 15 minutes to prevent replay attacks.",
+                "why_related": "Provides the security and cryptographic token constraints required for password reset verification."
+            },
+            {
+                "id": "SEC-04",
+                "title": "Password Complexity Rules",
+                "match": "84%",
+                "matchPercent": 84,
+                "excerpt": "Clicking the link allows the user to input a new password meeting enterprise security standards.",
+                "why_related": "Defines the required password format and hashing standards when updating credentials."
+            },
+            {
+                "id": "SEC-05",
+                "title": "Token Single-Use Invalidation",
+                "match": "79%",
+                "matchPercent": 79,
+                "excerpt": "Once used, or expired, the token becomes immediately invalid in the database.",
+                "why_related": "Ensures session state and token lifecycles are cleanly terminated after reset."
+            }
         ]
     }
 }
@@ -77,9 +96,7 @@ Return ONLY a valid JSON object with EXACTLY this structure (no extra top-level 
 {
   "title": string,                     // short human-readable requirement title
   "summary": string,                   // 2-4 sentence plain-language summary
-  "type": "FEATURE" | "BUGFIX" | "ENHANCEMENT",
   "complexity": "LOW" | "MEDIUM" | "HIGH",
-  "confidence": "LOW" | "MEDIUM" | "HIGH",
   "criteria": [ { "text": string, "src": string } ],
   "tasks": [ { "id": string, "src": string, "title": string, "description": string } ],
   "apis": [ { "endpoint": string, "method": string, "src": string, "snippet": string } ],
@@ -88,7 +105,7 @@ Return ONLY a valid JSON object with EXACTLY this structure (no extra top-level 
 }
 
 Rules:
-- "src" fields must reference which requirement/context line the output was derived from (e.g. "REQ-001"). If no related-context requirement applies, use "ORIGINAL".
+- "src" fields must reference which requirement ID the output was derived from (e.g. "REQ-001", "REQ-002"). Number each requirement criterion sequentially starting from "REQ-001". Do NOT use "ORIGINAL".
 - Only include the sections listed in "requested_scopes" below; for any section NOT requested, return an empty list [] (but still include the key).
 - Do not invent unrelated functionality. Base everything strictly on the requirement text and the related context provided.
 """
@@ -161,10 +178,25 @@ def analyze_requirement(
         for key in ("summary", "criteria", "tasks", "apis", "db_tables", "edge_cases"):
             result.setdefault(key, [] if key != "summary" else "")
 
-        if related_context:
+        # Determine complexity dynamically if not returned by model
+        if not result.get("complexity"):
+            crit_count = len(result.get("criteria", []))
+            tbl_count = len(result.get("db_tables", []))
+            if crit_count > 6 or tbl_count > 1:
+                result["complexity"] = "HIGH"
+            elif crit_count <= 3 and tbl_count == 0:
+                result["complexity"] = "LOW"
+            else:
+                result["complexity"] = "MEDIUM"
+
+        # Dynamically set related_count and evidence
+        related_list = related_context or []
+        result["related_count"] = len(related_list)
+
+        if related_list:
             result["evidence"] = {
-                "active_context": related_context[0] if related_context else None,
-                "related": related_context,
+                "active_context": related_list[0],
+                "related": related_list,
             }
         else:
             result.setdefault("evidence", None)
