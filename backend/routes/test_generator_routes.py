@@ -3,7 +3,14 @@ from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from bson import ObjectId
 
-from database.database import save_test_suite, projects_collection, users_collection
+from database.database import (
+    save_test_suite,
+    get_test_suites_list,
+    get_test_suite_by_id,
+    delete_test_suite_by_id,
+    projects_collection,
+    users_collection,
+)
 from services.test_service import generate_tests_from_code, generate_tests
 from services.auth_service import require_role
 from services.file_service import extract_text_from_upload
@@ -13,6 +20,67 @@ from services.project_code_service import (
 )
 
 router = APIRouter()
+
+
+@router.get("/test-suites")
+async def get_test_suites_endpoint(
+    search: Optional[str] = None,
+    project_id: Optional[str] = None,
+    limit: int = 100,
+    current_user: dict = Depends(require_role(["Admin", "QA Engineer", "QA", "Tester", "Quality Assurance"])),
+):
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id")
+    user_role = current_user.get("role", "QA")
+
+    return await get_test_suites_list(
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+        project_id=project_id,
+        search=search,
+        limit=limit,
+    )
+
+
+@router.get("/test-suites/{suite_id}")
+async def get_test_suite_details_endpoint(
+    suite_id: str,
+    current_user: dict = Depends(require_role(["Admin", "QA Engineer", "QA", "Tester", "Quality Assurance"])),
+):
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id")
+    user_role = current_user.get("role", "QA")
+
+    suite = await get_test_suite_by_id(
+        suite_id=suite_id,
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+    )
+    if not suite:
+        raise HTTPException(status_code=404, detail="Test suite not found or access denied.")
+    return suite
+
+
+@router.delete("/test-suites/{suite_id}")
+async def delete_test_suite_endpoint(
+    suite_id: str,
+    current_user: dict = Depends(require_role(["Admin", "QA Engineer", "QA", "Tester", "Quality Assurance"])),
+):
+    user_email = current_user.get("email") or current_user.get("user_email")
+    user_id = current_user.get("id") or current_user.get("user_id")
+    user_role = current_user.get("role", "QA")
+
+    success = await delete_test_suite_by_id(
+        suite_id=suite_id,
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Test suite could not be deleted or access denied.")
+    return {"message": "Test suite deleted successfully."}
 
 
 @router.post("/generate-tests")
