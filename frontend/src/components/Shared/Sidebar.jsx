@@ -37,9 +37,10 @@ const QA_NAV = [
 
 const ADMIN_NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/analyzer", label: "Analyzer", icon: FileSearch },
   { to: "/work-items", label: "Work Items", icon: CheckSquare },
   { to: "/team-progress", label: "Team Progress", icon: Users2 },
-  { to: "/admin/ai-insights", label: "AI Insights", icon: BrainCircuit },
+  { to: "/test-history", label: "Test History", icon: History },
   { to: "/admin/users", label: "Users", icon: ShieldCheck },
   { to: "/admin/roles", label: "Roles & Permissions", icon: ShieldAlert },
 ];
@@ -52,8 +53,8 @@ function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
   const isAdmin = isAdminRole(userRole);
 
   const navItems = isAdmin ? ADMIN_NAV : isQA ? QA_NAV : DEVELOPER_NAV;
-  const ctaTo = isAdmin ? null : isQA ? "/test-generator" : "/analyzer";
-  const ctaLabel = isAdmin ? "New Sprint" : isQA ? "New Test" : "New Analysis";
+  const ctaTo = isAdmin ? "/work-items/create" : isQA ? "/test-generator" : "/analyzer";
+  const ctaLabel = isAdmin ? "New Work Item" : isQA ? "New Test" : "New Analysis";
 
   const displayName =
     localStorage.getItem("userName") ||
@@ -67,8 +68,8 @@ function Sidebar({ userEmail, userRole, onLogout, onNewAction }) {
   };
 
   const handleCtaClick = () => {
-    if (isAdmin) {
-      if (onNewAction) onNewAction();
+    if (isAdmin && onNewAction) {
+      onNewAction();
     } else if (ctaTo) {
       navigate(ctaTo);
     }
