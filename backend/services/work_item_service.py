@@ -711,11 +711,3 @@ async def init_work_items_indexes_and_counter():
             upsert=True,
         )
 
-
-async def purge_mock_work_items():
-    """Cleans out legacy mock work items so that the dashboard only displays user-created work items."""
-    try:
-        mock_codes = ["#WI-100", "#WI-101", "#WI-102", "#WI-103", "#WI-110", "#WI-111", "#WI-104", "#WI-105"]
-        await work_items_collection.delete_many({"code": {"$in": mock_codes}})
-    except Exception:
-        pass
