@@ -8,6 +8,8 @@ import RegisterPage from "./pages/RegisterPage";
 import OverviewPage from "./pages/developer/OverviewPage";
 import Dashboard from "./pages/test-engineer/Dashboard";
 import TestGeneratorPage from "./pages/test-engineer/TestGeneratorPage";
+import TestHistoryPage from "./pages/test-engineer/TestHistoryPage";
+import TestSuiteDetailsPage from "./pages/test-engineer/TestSuiteDetailsPage";
 import BugSummarizerPage from "./pages/test-engineer/BugSummarizerPage";
 import AnalysisHistoryPage from "./pages/developer/AnalysisHistoryPage";
 import ResultsPage from "./pages/developer/ResultsPage";
@@ -19,6 +21,7 @@ import WorkItemsPage from "./pages/work-items/WorkItemsPage";
 import CreateWorkItemPage from "./pages/work-items/CreateWorkItemPage";
 import WorkItemDetailsPage from "./pages/work-items/WorkItemDetailsPage";
 import EditWorkItemPage from "./pages/work-items/EditWorkItemPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 import { ProjectAccessProvider } from "./context/ProjectAccessContext";
 import "./App.css";
 import { normalizeRole, isAdminRole, isQARole } from "./utils/roleUtils";
@@ -26,8 +29,17 @@ import { normalizeRole, isAdminRole, isQARole } from "./utils/roleUtils";
 function App() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [recentFiles, setRecentFiles] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [projects, setProjects] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cached_projects");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [activeProjectId, setActiveProjectId] = useState(
+    () => localStorage.getItem("active_project_id") || null
+  );
   const [authToken, setAuthToken] = useState(
     () => localStorage.getItem("token") || localStorage.getItem("authToken") || null
   );
@@ -71,42 +83,6 @@ function App() {
     });
   }
 
-  useEffect(() => {
-    if (authToken) {
-      fetchHistory();
-      fetchProjects();
-    }
-  }, [authToken]);
-
-  async function fetchHistory() {
-    try {
-      const response = await fetch("http://localhost:8000/history", {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (!response.ok) throw new Error("Failed to fetch history");
-      const data = await response.json();
-      setRecentFiles(data);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  async function fetchProjects() {
-    try {
-      const response = await fetch("http://localhost:8000/projects", {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      setProjects(data);
-      if (data.length > 0 && !activeProjectId) {
-        setActiveProjectId(data[0].id);
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  }
-
   // Determine the default overview page according to the user's role
   const renderRoleDashboard = () => {
     const role = normalizeRole(userRole);
@@ -120,6 +96,7 @@ function App() {
       <OverviewPage
         authToken={authToken}
         userRole={userRole}
+        userEmail={userEmail}
       />
     );
   };
@@ -237,11 +214,51 @@ function App() {
                       {/* QA Routes */}
                       <Route
                         path="/test-generator"
-                        element={<TestGeneratorPage authToken={authToken} />}
+                        element={
+                          isQARole(userRole) || isAdminRole(userRole) ? (
+                            <TestGeneratorPage authToken={authToken} />
+                          ) : (
+                            <Navigate to="/" replace />
+                          )
+                        }
+                      />
+                      <Route
+                        path="/test-history"
+                        element={
+                          isQARole(userRole) || isAdminRole(userRole) ? (
+                            <TestHistoryPage
+                              authToken={authToken}
+                              userRole={userRole}
+                              userEmail={userEmail}
+                            />
+                          ) : (
+                            <Navigate to="/" replace />
+                          )
+                        }
+                      />
+                      <Route
+                        path="/test-history/:id"
+                        element={
+                          isQARole(userRole) || isAdminRole(userRole) ? (
+                            <TestSuiteDetailsPage
+                              authToken={authToken}
+                              userRole={userRole}
+                              userEmail={userEmail}
+                            />
+                          ) : (
+                            <Navigate to="/" replace />
+                          )
+                        }
                       />
                       <Route
                         path="/bug-summarizer"
-                        element={<BugSummarizerPage />}
+                        element={
+                          isQARole(userRole) || isAdminRole(userRole) ? (
+                            <BugSummarizerPage />
+                          ) : (
+                            <Navigate to="/" replace />
+                          )
+                        }
                       />
 
                       {/* Admin Routes */}
@@ -275,6 +292,20 @@ function App() {
                         element={<RolesPermissionsPage />}
                       />
 
+                      {/* Shared Settings Route */}
+                      <Route
+                        path="/settings"
+                        element={
+                          <SettingsPage
+                            authToken={authToken}
+                            userRole={userRole}
+                            userEmail={userEmail}
+                            theme={theme}
+                            setTheme={setTheme}
+                            onLogout={handleLogout}
+                          />
+                        }
+                      />
 
                       {/* Fallback */}
                       <Route path="*" element={<Navigate to="/" replace />} />
