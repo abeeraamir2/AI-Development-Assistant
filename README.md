@@ -99,7 +99,7 @@
 
 ### **Backend**
 * **API Framework**: FastAPI (Python 3.12, ASGI, Uvicorn)
-* **AI Engine**: Google Gemini API (`gemini-2.5-flash` / Google GenAI SDK)
+* **AI Engine**: Google Gemini API (`gemini-3.5-flash-lite` / Google GenAI SDK)
 * **Database Driver**: Motor (`AsyncIOMotorClient` for asynchronous MongoDB Atlas operations)
 * **Embeddings & Vector Search**: Sentence Transformers / NumPy cosine similarity
 * **Authentication**: PyJWT + Passlib (Bcrypt) + OAuth2 Password Bearer
