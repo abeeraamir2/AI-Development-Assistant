@@ -36,7 +36,7 @@
 
 ## 📖 Overview
 
-**DevAssist (AI Development Assistant)** is an enterprise-grade, full-stack AI platform built to accelerate software development lifecycles. By bridging the gap between product requirements, engineering implementation, and quality assurance, DevAssist uses Google Gemini generative models and semantic vector embeddings to automatically parse natural language requirements into:
+**DevAssist (AI Development Assistant)** is a full-stack AI platform built to accelerate software development lifecycles. By bridging the gap between product requirements, engineering implementation, and quality assurance, DevAssist uses Google Gemini generative models and semantic vector embeddings to automatically parse natural language requirements into:
 
 * **Strict Acceptance Criteria** with sequential functional references (`AC-01`, `AC-02`).
 * **Granular Engineering Tasks** ready for developer implementation.
