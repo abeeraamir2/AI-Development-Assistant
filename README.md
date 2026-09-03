@@ -17,21 +17,19 @@
 - [Key Features](#-key-features)
   - [1. AI Requirement Decomposition & Analysis](#1-ai-requirement-decomposition--analysis)
   - [2. Grounded Vector Search & RAG Context](#2-grounded-vector-search--rag-context)
-  - [3. Automated Multi-Language Test Generation](#3-automated-multi-language-test-generation)
+  - [3. Automated QA Test Suite Generation](#3-automated-qa-test-suite-generation)
   - [4. Agile Work Item & Sprint Management](#4-agile-work-item--sprint-management)
   - [5. Role-Based Access Control (RBAC) & Governance](#5-role-based-access-control-rbac--governance)
   - [6. Security & Multi-Session Invalidation](#6-security--multi-session-invalidation)
   - [7. High-Performance In-Memory Caching](#7-high-performance-in-memory-caching)
 - [Tech Stack](#-tech-stack)
 - [System Architecture](#-system-architecture)
-- [Project Directory Structure](#-project-directory-structure)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [1. Backend Setup](#1-backend-setup)
   - [2. Frontend Setup](#2-frontend-setup)
   - [3. Environment Variables Configuration](#3-environment-variables-configuration)
 - [API Reference](#-api-reference)
-- [Contributing](#-contributing)
 - [License](#-license)
 
 ---
@@ -43,9 +41,9 @@
 * **Strict Acceptance Criteria** with sequential functional references (`AC-01`, `AC-02`).
 * **Granular Engineering Tasks** ready for developer implementation.
 * **REST API Contracts** complete with HTTP methods, payload schemas, and response formats.
-* **Relational Database Schemas** with table definitions, column types, and foreign key constraints.
+* **Database Schemas & Data Models** with table/collection definitions, column types, and constraints.
 * **Edge Cases & Failure Scenarios** for robust defensive engineering.
-* **Multi-Language Test Suites** (Pytest, Jest, JUnit, xUnit) ready for automated verification.
+* **Automated QA Test Suites** (Functional, API, Negative, and Boundary test cases) ready for verification.
 
 ---
 
@@ -60,8 +58,8 @@
 * **Duplicate & Similarity Detection**: Generates vector embeddings for requirement criteria using `sentence-transformers` and performs cosine similarity search.
 * **Grounded AI Evidence**: References related requirements from the project history and provides visual similarity confidence scores and contextual explanations.
 
-### 3. Automated Multi-Language Test Generation
-* **Framework Coverage**: Generates ready-to-run test cases across Python (Pytest / Unittest), JavaScript (Jest / Mocha), Java (JUnit), and C# (xUnit).
+### 3. Automated QA Test Suite Generation
+* **Multi-Category Test Coverage**: Generates ready-to-run test cases categorized by Functional, API / Integration, Negative / Security, and Boundary / Edge Cases.
 * **Test History & Metrics**: Tracks generated suites, code snippets, total test assertions, and download packages.
 
 ### 4. Agile Work Item & Sprint Management
@@ -133,69 +131,6 @@ graph TD
         G --> K
         H --> K
     end
-```
-
----
-
-## 📁 Project Directory Structure
-
-```text
-AI-Development-Assistant/
-├── backend/
-│   ├── database/
-│   │   └── database.py               # Motor MongoDB client, collections & queries
-│   ├── models/
-│   │   ├── project_models.py         # Pydantic models for Projects & Join Requests
-│   │   ├── user_models.py            # User auth, roles & profile schemas
-│   │   └── work_item_models.py       # Agile work item request/response schemas
-│   ├── routes/
-│   │   ├── analyzer_overview_routes.py # Developer overview telemetry
-│   │   ├── analyzer_routes.py        # File upload, requirement analysis & history
-│   │   ├── auth_routes.py            # Register, Login & Session revocation
-│   │   ├── dashboard_routes.py       # Admin SaaS KPI metrics & workload aggregation
-│   │   ├── notification_routes.py    # Live in-app notifications
-│   │   ├── project_access_routes.py  # Join request workflows & access gating
-│   │   ├── project_routes.py         # Project CRUD & team member assignment
-│   │   ├── role_routes.py            # RBAC role permissions
-│   │   ├── test_generator_routes.py  # AI test suite generation
-│   │   ├── user_routes.py            # Profile & session settings
-│   │   └── work_item_routes.py       # Work item management & summary
-│   ├── services/
-│   │   ├── analysis_service.py       # Gemini prompt engineering & decomposition
-│   │   ├── auth_service.py           # JWT creation, decoding & user TTL cache
-│   │   ├── embedding_service.py      # Vector embeddings for semantic search
-│   │   ├── file_service.py           # PDF, DOCX, TXT document parser
-│   │   ├── project_access_service.py # Access status checks & approvals
-│   │   └── work_item_service.py      # Work item business logic & index initialization
-│   ├── main.py                       # FastAPI application entry point & CORS
-│   └── requirements.txt              # Python package dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/               # Modular UI components by domain
-│   │   │   ├── Admin/                # Admin charts, tables & metrics
-│   │   │   ├── Analysis-history/     # History lists, filters & detail drawers
-│   │   │   ├── Developer-overview/   # KPI cards, activity line charts, health donuts
-│   │   │   ├── Requirement-analyzer/ # Ingestion screens & scope selectors
-│   │   │   ├── Requirement-results/  # Evidence drawers, schemas, tasks & export
-│   │   │   ├── Shared/               # TopHeader, Sidebar, Notifications
-│   │   │   └── Work-items/           # Work item forms, cards & filters
-│   │   ├── context/
-│   │   │   └── ProjectAccessContext.jsx # Global project access & notification state
-│   │   ├── pages/
-│   │   │   ├── admin/                # AdminDashboard, UsersPage, RolesPage
-│   │   │   ├── developer/            # OverviewPage, AnalyzerPage, ResultsPage, History
-│   │   │   ├── test-engineer/        # TestGeneratorPage, TestHistoryPage
-│   │   │   ├── work-items/           # WorkItemsPage, CreateWorkItemPage
-│   │   │   └── SettingsPage.jsx      # Profile, Security, Sessions & Notification prefs
-│   │   ├── utils/
-│   │   │   ├── authUtils.js          # Fetch interceptor & auth helpers
-│   │   │   ├── dateUtils.js          # Relative & localized date formatting
-│   │   │   └── roleUtils.js          # RBAC normalization & permission checks
-│   │   ├── App.jsx                   # Role-based route definitions
-│   │   └── main.jsx                  # React application entry point
-│   ├── package.json                  # Frontend dependencies & scripts
-│   └── vite.config.js                # Vite build configuration
-└── README.md
 ```
 
 ---
@@ -302,29 +237,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 | `POST` | `/projects` | Create a new project workspace | Authenticated |
 | `GET` | `/work-items` | Query agile work items with filters | Authenticated |
 | `POST` | `/work-items` | Create a new agile work item | Authenticated |
-| `POST` | `/generate-tests` | Generate multi-language unit test suite | QA / Admin |
+| `POST` | `/generate-tests` | Generate multi-category unit test suite | QA / Admin |
 | `GET` | `/admin/dashboard-stats` | Aggregated SaaS metrics & telemetry | Admin |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. **Fork** the repository.
-2. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
-3. **Commit your changes**:
-   ```bash
-   git commit -m "Add AmazingFeature"
-   ```
-4. **Push to the branch**:
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
-5. **Open a Pull Request**.
 
 ---
 
