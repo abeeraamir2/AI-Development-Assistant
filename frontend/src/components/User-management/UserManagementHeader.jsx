@@ -59,7 +59,7 @@ export default function UserManagementHeader({
         </div>
 
         {/* Search Bar */}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center w-full sm:w-auto">
           <Search
             size={14}
             className="absolute left-3.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
@@ -69,7 +69,7 @@ export default function UserManagementHeader({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search users..."
-            className="w-48 sm:w-56 pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-slate-800 dark:text-zinc-200 placeholder-slate-400 dark:placeholder-zinc-500 focus:border-[#4d8bf8] focus:ring-2 focus:ring-[#4d8bf8]/15 focus:outline-none transition-all shadow-xs"
+            className="w-full sm:w-56 pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-slate-800 dark:text-zinc-200 placeholder-slate-400 dark:placeholder-zinc-500 focus:border-[#4d8bf8] focus:ring-2 focus:ring-[#4d8bf8]/15 focus:outline-none transition-all shadow-xs"
           />
         </div>
 

@@ -83,7 +83,7 @@ export default function CreateRoleModal({ isOpen, onClose, onRoleCreated }) {
                 className="fixed inset-0 bg-black/60 backdrop-blur-xs"
                 onClick={onClose}
             />
-            <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl transition-colors">
+            <div className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 shadow-2xl transition-colors">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5">
                         <div className="p-2 rounded-xl bg-[#4d8bf8]/10 text-[#4d8bf8]">

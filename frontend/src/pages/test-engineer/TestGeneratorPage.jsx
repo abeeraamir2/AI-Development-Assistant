@@ -166,7 +166,7 @@ export default function TestGeneratorPage({ authToken }) {
   };
 
   return (
-    <div className="w-full p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-8">
+    <div className="w-full p-4 sm:p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6 sm:space-y-8">
       <Toaster position="top-right" richColors />
 
       {/* Header Banner */}

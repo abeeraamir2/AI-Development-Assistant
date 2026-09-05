@@ -70,7 +70,7 @@ export default function TestSuiteDetailsPage({ authToken }) {
   const createdDate = suite ? parseDate(suite.created_at) : null;
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
       <Toaster position="top-right" richColors />
 
       {/* Navigation Breadcrumb & Actions */}
@@ -89,13 +89,13 @@ export default function TestSuiteDetailsPage({ authToken }) {
               {suite?.title || suite?.filename || "Test Suite Details"}
             </span>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2.5">
-            <FlaskConical size={24} className="text-[var(--accent)]" />
-            {suite?.title || suite?.filename || "Test Suite Details"}
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5">
+            <FlaskConical size={24} className="text-[var(--accent)] shrink-0" />
+            <span className="truncate">{suite?.title || suite?.filename || "Test Suite Details"}</span>
           </h1>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={() => navigate("/test-history")}

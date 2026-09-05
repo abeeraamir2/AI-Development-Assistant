@@ -50,7 +50,7 @@ export default function DeleteProjectModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl shadow-2xl overflow-hidden flex flex-col scale-in-95 duration-150"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl shadow-2xl flex flex-col scale-in-95 duration-150"
         role="dialog"
       >
         {/* Modal Header */}

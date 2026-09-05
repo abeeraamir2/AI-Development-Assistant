@@ -7,7 +7,7 @@ export default function RecentAnalysisTable({ analyses = [] }) {
   const navigate = useNavigate();
 
   return (
-    <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
+    <div className="p-4 sm:p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-base tracking-wide flex items-center gap-2">
           <span>🕒</span> Recent Analyses
@@ -21,7 +21,7 @@ export default function RecentAnalysisTable({ analyses = [] }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse text-xs">
+        <table className="w-full text-left border-collapse text-xs min-w-[500px]">
           <thead>
             <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase font-semibold">
               <th className="py-2.5 px-3">Requirement</th>

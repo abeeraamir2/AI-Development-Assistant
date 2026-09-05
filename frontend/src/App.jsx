@@ -101,6 +101,8 @@ function App() {
     );
   };
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
     <Routes>
       <Route
@@ -135,15 +137,18 @@ function App() {
                   userEmail={userEmail}
                   userRole={userRole}
                   onLogout={handleLogout}
+                  isOpen={isMobileSidebarOpen}
+                  onClose={() => setIsMobileSidebarOpen(false)}
                 />
 
-                <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex flex-1 flex-col overflow-hidden min-w-0">
                   <TopHeader
                     theme={theme}
                     toggleTheme={toggleTheme}
+                    onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
                   />
 
-                  <main className="flex-1 overflow-y-auto">
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
                     <Routes>
                       {/* Role-based root view */}
                       <Route path="/" element={renderRoleDashboard()} />

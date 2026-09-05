@@ -91,7 +91,7 @@ export default function CreateProjectModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-2xl z-10 text-[var(--text-primary)] transition-colors"
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-5 sm:p-6 shadow-2xl z-10 text-[var(--text-primary)] transition-colors"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-1">

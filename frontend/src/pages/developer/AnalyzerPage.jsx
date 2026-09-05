@@ -209,7 +209,7 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
   }
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
       <Toaster position="top-right" richColors />
 
       {/* Header */}
@@ -228,7 +228,7 @@ export default function AnalyzerPage({ authToken, selectedProject }) {
 
       {/* Main Input Form */}
       <div className="w-full space-y-6">
-        <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-5">
+        <div className="p-4 sm:p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-5">
           {/* Project Selection Dropdown */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
             <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">

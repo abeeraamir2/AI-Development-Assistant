@@ -34,7 +34,7 @@ export default function NotificationPanel({ onClose }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 6, scale: 0.97 }}
       transition={{ duration: 0.18 }}
-      className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[520px]"
+      className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-96 max-w-sm rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[520px]"
     >
       {/* Header */}
       <div className="p-4 border-b border-[var(--border-color)]/60 bg-[var(--bg-subtle)]/40 flex items-center justify-between">

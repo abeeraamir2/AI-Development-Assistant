@@ -17,7 +17,7 @@ async function handleResponse(response, defaultError = "Request failed") {
     try {
       const errData = await response.json();
       errorMsg = errData.detail || defaultError;
-    } catch (_) {}
+    } catch (_) { }
     throw new Error(errorMsg);
   }
   return await response.json();
@@ -38,9 +38,8 @@ export async function getWorkItemsApi(filters = {}) {
   if (filters.project_id && filters.project_id !== "all" && filters.project_id !== "All")
     params.append("project_id", filters.project_id);
 
-  const url = `${API_BASE_URL}/work-items${
-    params.toString() ? `?${params.toString()}` : ""
-  }`;
+  const url = `${API_BASE_URL}/work-items${params.toString() ? `?${params.toString()}` : ""
+    }`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -57,9 +56,8 @@ export async function getWorkItemsSummaryApi(projectId = null) {
   if (projectId && projectId !== "all" && projectId !== "All") {
     params.append("project_id", projectId);
   }
-  const url = `${API_BASE_URL}/work-items/summary${
-    params.toString() ? `?${params.toString()}` : ""
-  }`;
+  const url = `${API_BASE_URL}/work-items/summary${params.toString() ? `?${params.toString()}` : ""
+    }`;
   const response = await fetch(url, {
     method: "GET",
     headers: getAuthHeaders(),
@@ -108,8 +106,8 @@ export async function getWorkItemByIdApi(id) {
 export async function getEligibleParentsApi(excludeId = null) {
   const endpoint = excludeId
     ? `${API_BASE_URL}/work-items/eligible-parents/${encodeURIComponent(
-        excludeId.startsWith("#") ? excludeId : `#${excludeId}`
-      )}`
+      excludeId.startsWith("#") ? excludeId : `#${excludeId}`
+    )}`
     : `${API_BASE_URL}/work-items/eligible-parents`;
 
   const response = await fetch(endpoint, {

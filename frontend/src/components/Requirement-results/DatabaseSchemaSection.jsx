@@ -12,7 +12,7 @@ export default function DatabaseSchemaSection({ schema = [] }) {
   }
 
   return (
-    <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
+    <div className="p-4 sm:p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
 
       {/* Section Header */}
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
@@ -60,7 +60,7 @@ export default function DatabaseSchemaSection({ schema = [] }) {
             {/* Columns */}
             <div className="overflow-x-auto">
 
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[360px]">
 
                 <thead>
 

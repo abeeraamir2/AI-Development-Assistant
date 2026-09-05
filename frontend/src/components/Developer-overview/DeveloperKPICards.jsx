@@ -89,7 +89,7 @@ export default function DeveloperKPICards({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Custom Select Project Dropdown - only shown when at least one project exists */}
           {hasProjects && (
             <div className="flex items-center gap-1.5">

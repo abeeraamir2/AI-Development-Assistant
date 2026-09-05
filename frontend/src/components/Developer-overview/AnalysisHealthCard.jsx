@@ -10,7 +10,7 @@ export default function AnalysisHealthCard({ metrics }) {
   ];
 
   return (
-    <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs flex flex-col justify-between w-full lg:w-80">
+    <div className="p-4 sm:p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs flex flex-col justify-between w-full lg:w-80 min-w-0">
       <h2 className="font-bold text-base tracking-wide">Analysis Health</h2>
 
       {/* Circular Progress Gauge */}

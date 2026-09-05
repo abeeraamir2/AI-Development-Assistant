@@ -22,7 +22,7 @@ export default function PermissionMatrix({
     const actions = ["view", "create", "edit", "delete"];
 
     return (
-        <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-hidden space-y-4 p-6">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-hidden space-y-4 p-4 sm:p-6">
         {/* Header with active editing indicator */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-zinc-800">
             <div className="flex items-center gap-2.5">
@@ -41,7 +41,7 @@ export default function PermissionMatrix({
             </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 text-xs">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 text-xs self-start sm:self-auto">
             <span className="text-slate-400 dark:text-zinc-500 font-medium">
                 {isAdmin ? "Viewing:" : "Editing:"}
             </span>
@@ -56,7 +56,7 @@ export default function PermissionMatrix({
 
         {/* Grid Matrix Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-200/70 dark:border-zinc-800">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[500px]">
             <thead className="bg-slate-50/70 dark:bg-zinc-800/50 border-b border-slate-200/70 dark:border-zinc-800 text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-500 tracking-wider">
                 <tr>
                 <th className="py-3 px-5">Module / Category</th>

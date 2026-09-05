@@ -184,7 +184,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="w-full p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div className="w-full p-4 sm:p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)]">
       {/* Title Header */}
       <motion.div
         initial={{ opacity: 0, x: -15 }}
@@ -205,7 +205,7 @@ export default function Dashboard() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6"
       >
         {STATS.map(({ label, value, icon: Icon, highlight }) => (
           <motion.div
@@ -278,7 +278,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
+              <table className="w-full text-sm text-left min-w-[550px]">
                 <thead>
                   <tr className="text-xs border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider">
                     <th className="font-semibold pb-3 whitespace-nowrap">

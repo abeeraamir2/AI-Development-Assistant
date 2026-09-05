@@ -24,7 +24,7 @@ export default function RolesSummaryTable({
     return (
         <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[550px]">
             <thead className="border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30 text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                 <th className="py-3.5 px-5">Role Name</th>

@@ -7,7 +7,7 @@ export default function RequirementActivityChart({ data = [] }) {
   const hasData = Array.isArray(data) && data.length > 0 && data.some((item) => (item.runs || 0) > 0);
 
   return (
-    <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4 flex-1 flex flex-col justify-between">
+    <div className="p-4 sm:p-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4 flex-1 flex flex-col justify-between min-w-0 w-full">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-base tracking-wide">Requirement Activity</h2>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">

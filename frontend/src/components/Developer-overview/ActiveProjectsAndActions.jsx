@@ -55,7 +55,7 @@ export default function ActiveProjectsAndActions({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Projects List & Access Control */}
-      <div className="lg:col-span-7 p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4 flex flex-col justify-between">
+      <div className="lg:col-span-7 p-4 sm:p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-bold text-base tracking-wide text-[var(--text-primary)]">
@@ -252,7 +252,7 @@ export default function ActiveProjectsAndActions({
       </div>
 
       {/* Quick Actions Panel */}
-      <div className="lg:col-span-5 p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
+      <div className="lg:col-span-5 p-4 sm:p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs space-y-4">
         <h2 className="font-bold text-base tracking-wide text-[var(--text-primary)]">
           Quick Actions
         </h2>
@@ -260,7 +260,7 @@ export default function ActiveProjectsAndActions({
           Jump directly into core AI-powered engineering workflows.
         </p>
 
-        <div className="grid grid-cols-3 gap-3 pt-2">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2">
           {/* New Analysis */}
           <button
             onClick={() => navigate("/analyzer")}

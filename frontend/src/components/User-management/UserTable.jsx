@@ -8,7 +8,7 @@ export default function UserTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-xs">
+      <table className="w-full text-left text-xs min-w-[650px]">
         <thead className="border-b border-[var(--border-color)] bg-[var(--bg-subtle)]/50 text-[var(--text-muted)] font-semibold">
           <tr>
             <th className="py-3.5 pl-6 pr-3">User</th>

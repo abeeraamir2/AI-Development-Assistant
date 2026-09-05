@@ -141,7 +141,7 @@ export default function AdminDashboard({ authToken, userRole, userEmail }) {
   const totalStatusCount = statusChartData.reduce((acc, d) => acc + d.value, 0);
 
   return (
-    <div className="p-6 md:p-8 min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-8">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6 sm:space-y-8">
       <Toaster position="top-right" richColors />
 
       {/* 1. Header Section */}
@@ -224,7 +224,7 @@ export default function AdminDashboard({ authToken, userRole, userEmail }) {
       ) : (
         <>
           {/* 2. KPI Summary Cards (6 Cards Grid) */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5">
             {/* Total Projects */}
             <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] space-y-2 hover:border-[var(--accent)]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
@@ -491,7 +491,7 @@ export default function AdminDashboard({ authToken, userRole, userEmail }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="border-b border-[var(--border-color)] text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                       <th className="py-3 px-3">Project</th>
@@ -680,7 +680,7 @@ export default function AdminDashboard({ authToken, userRole, userEmail }) {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
                     <thead>
                       <tr className="border-b border-[var(--border-color)] text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                         <th className="py-2.5 px-3">Team Member</th>

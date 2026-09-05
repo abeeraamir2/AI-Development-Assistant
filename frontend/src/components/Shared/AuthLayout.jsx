@@ -9,7 +9,7 @@ export default function AuthLayout({ children }) {
         
         {/* LEFT COLUMN: Equal 50% Width */}
         <div 
-          className="relative p-8 md:p-10 flex flex-col justify-between bg-[#f8faff] border-b lg:border-b-0 lg:border-r border-slate-100 overflow-hidden"
+          className="relative p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-[#f8faff] border-b lg:border-b-0 lg:border-r border-slate-100 overflow-hidden"
           style={{
             backgroundImage: `
               radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.25) 1px, transparent 0)
@@ -77,7 +77,7 @@ export default function AuthLayout({ children }) {
         </div>
 
         {/* RIGHT COLUMN: Equal 50% Width Form Panel */}
-        <div className="p-8 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
+        <div className="p-6 sm:p-8 md:p-12 flex flex-col justify-center bg-white">
           <div className="w-full">
             {children}
           </div>

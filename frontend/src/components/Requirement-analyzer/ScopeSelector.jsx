@@ -24,7 +24,7 @@ export default function ScopeSelector({ selectedScopes, toggleScope }) {
       <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
         Analysis Scope
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
         {SCOPES.map(({ id, label, icon: Icon }) => {
           const isActive = selectedScopes.includes(id);
           return (
@@ -32,7 +32,7 @@ export default function ScopeSelector({ selectedScopes, toggleScope }) {
               key={id}
               type="button"
               onClick={() => toggleScope(id)}
-              className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer min-w-0 ${
                 isActive
                   ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
                   : "border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40"

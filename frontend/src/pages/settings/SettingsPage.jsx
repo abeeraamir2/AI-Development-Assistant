@@ -55,7 +55,7 @@ export default function SettingsPage({
   };
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Toaster position="top-right" richColors />
 
       {/* Main Container */}

@@ -179,7 +179,7 @@ export default function UserManagementPage({ authToken }) {
   }
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-slate-50/50 dark:bg-zinc-950 space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-slate-50/50 dark:bg-zinc-950 space-y-6">
       <Toaster position="top-right" richColors />
 
       {/* Header & Filter Controls */}

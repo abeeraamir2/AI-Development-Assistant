@@ -19,7 +19,7 @@ export default function CreateWorkItemPage({ authToken, userRole, userEmail }) {
     null;
 
   return (
-    <div className="w-full p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+    <div className="w-full p-4 sm:p-6 md:p-8 min-h-full transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
       <Toaster position="top-right" richColors />
 
       {/* Header & Back Link */}

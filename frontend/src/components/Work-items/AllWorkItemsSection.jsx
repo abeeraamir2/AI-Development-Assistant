@@ -227,7 +227,7 @@ export default function AllWorkItemsSection({
 
       {/* Table Container */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse min-w-[780px]">
           <thead>
             <tr className="border-b border-[var(--border-color)] bg-[var(--bg-subtle)]/40 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               <th className="py-3.5 pl-6 pr-3">ID</th>

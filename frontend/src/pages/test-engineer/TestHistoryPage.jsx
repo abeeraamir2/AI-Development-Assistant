@@ -213,7 +213,7 @@ export default function TestHistoryPage({ authToken, userRole, userEmail }) {
   };
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 min-h-full bg-[var(--bg-primary)] text-[var(--text-primary)] space-y-6">
       <Toaster position="top-right" richColors />
 
       {/* Header */}
@@ -238,7 +238,7 @@ export default function TestHistoryPage({ authToken, userRole, userEmail }) {
       </div>
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] flex items-center gap-3.5">
           <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
             <FlaskConical size={20} />

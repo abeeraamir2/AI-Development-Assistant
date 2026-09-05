@@ -348,7 +348,7 @@ export default function WorkItemForm({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-5"
+        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-4 sm:p-6 shadow-xs space-y-5"
       >
         <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border-color)] text-[var(--text-primary)] font-bold text-sm">
           <AlignLeft size={16} className="text-[#4d8bf8]" />
@@ -489,7 +489,7 @@ export default function WorkItemForm({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-5"
+        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-4 sm:p-6 shadow-xs space-y-5"
       >
         <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border-color)] text-[var(--text-primary)] font-bold text-sm">
           <Sliders size={16} className="text-[#4d8bf8]" />
@@ -628,7 +628,7 @@ export default function WorkItemForm({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-5"
+        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-4 sm:p-6 shadow-xs space-y-5"
       >
         <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border-color)] text-[var(--text-primary)] font-bold text-sm">
           <GitFork size={16} className="text-[#4d8bf8]" />
@@ -748,7 +748,7 @@ export default function WorkItemForm({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.15 }}
-        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-4"
+        className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-4 sm:p-6 shadow-xs space-y-4"
       >
         <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border-color)] text-[var(--text-primary)] font-bold text-sm">
           <Paperclip size={16} className="text-[#4d8bf8]" />

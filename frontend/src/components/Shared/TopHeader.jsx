@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Moon, Sun, Bell } from "lucide-react";
+import { Moon, Sun, Bell, Menu } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useProjectAccess } from "../../context/ProjectAccessContext";
 import NotificationPanel from "./NotificationPanel";
@@ -22,7 +22,7 @@ const ROUTE_LABELS = {
   "/settings": "Settings",
 };
 
-export default function TopHeader({ theme, toggleTheme }) {
+export default function TopHeader({ theme, toggleTheme, onToggleSidebar }) {
   const location = useLocation();
   const { unreadCount } = useProjectAccess();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -63,16 +63,30 @@ export default function TopHeader({ theme, toggleTheme }) {
   const currentTitle = getRouteTitle(location.pathname);
 
   return (
-    <header className="h-14 border-b border-[var(--border-color,#e2e8f0)] bg-[var(--bg-surface,#ffffff)] px-6 flex items-center justify-between shrink-0 transition-colors z-40 relative">
-      {/* Dynamic Breadcrumbs */}
-      <div className="flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-zinc-500">
-        <span className="hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">Workspace</span>
-        <span>/</span>
-        <span className="font-semibold text-slate-800 dark:text-zinc-200">{currentTitle}</span>
+    <header className="h-14 border-b border-[var(--border-color,#e2e8f0)] bg-[var(--bg-surface,#ffffff)] px-3 sm:px-6 flex items-center justify-between shrink-0 transition-colors z-40 relative">
+      {/* Left: Mobile Sidebar Hamburger + Dynamic Breadcrumbs */}
+      <div className="flex items-center gap-2 min-w-0">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 rounded-xl border border-[var(--border-color,#e2e8f0)] bg-[var(--bg-subtle,#f8fafc)] text-slate-600 dark:text-zinc-300 hover:border-[#4d8bf8] transition-all cursor-pointer shrink-0"
+            title="Toggle Navigation Menu"
+            aria-label="Toggle Navigation Menu"
+          >
+            <Menu size={16} />
+          </button>
+        )}
+
+        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-zinc-500 min-w-0">
+          <span className="hidden sm:inline hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">Workspace</span>
+          <span className="hidden sm:inline">/</span>
+          <span className="font-semibold text-slate-800 dark:text-zinc-200 truncate max-w-[140px] sm:max-w-xs">{currentTitle}</span>
+        </div>
       </div>
 
       {/* Right Controls: Notifications + Theme Toggle */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Notification Bell with Dropdown */}
         <div className="relative" ref={notifRef}>
           <button
